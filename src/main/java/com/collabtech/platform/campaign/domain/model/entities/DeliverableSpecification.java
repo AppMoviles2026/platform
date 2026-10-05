@@ -5,7 +5,7 @@ import com.collabtech.platform.campaign.domain.model.valueobjects.SpecificationI
 
 import java.time.Instant;
 
-/** Structural model only. Business transitions are scheduled in docs/implementation-plan.md. */
+/** Expected content specification; not an executed Collaboration deliverable. */
 public final class DeliverableSpecification extends Entity<SpecificationId> {
     private final String contentType;
     private final String description;
@@ -14,8 +14,9 @@ public final class DeliverableSpecification extends Entity<SpecificationId> {
 
     public DeliverableSpecification(SpecificationId id, String contentType, String description, int quantity, Instant deadline) {
         super(id);
-        this.contentType = contentType;
-        this.description = description;
+        this.contentType = com.collabtech.platform.campaign.domain.model.valueobjects.CampaignText.required(contentType, 100);
+        this.description = com.collabtech.platform.campaign.domain.model.valueobjects.CampaignText.required(description, 2000);
+        if (quantity < 1 || quantity > 1000 || deadline == null) throw new IllegalArgumentException("Quantity 1–1000 and deadline required");
         this.quantity = quantity;
         this.deadline = deadline;
     }

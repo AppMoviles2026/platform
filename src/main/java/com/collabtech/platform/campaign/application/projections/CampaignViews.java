@@ -11,7 +11,7 @@ public final class CampaignViews {
     public record Summary(UUID id, UUID brandId, String brandName, String title, String category,
                           String location, CompensationTerms compensation, Instant applicationDeadline, String status) {}
     public record Details(Summary summary, String objective, String description, String targetAudience,
-                          List<Requirement> requirements, List<Deliverable> deliverables, boolean acceptsApplications) {
+                          List<Requirement> requirements, List<Deliverable> deliverables, boolean acceptsApplications, Instant publicationDate) {
         public Details { requirements = List.copyOf(requirements); deliverables = List.copyOf(deliverables); }
     }
     public record Requirement(UUID id, String description, boolean mandatory) {}

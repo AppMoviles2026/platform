@@ -3,14 +3,14 @@ package com.collabtech.platform.campaign.domain.model.entities;
 import com.collabtech.platform.shared.domain.model.Entity;
 import com.collabtech.platform.campaign.domain.model.valueobjects.RequirementId;
 
-/** Structural model only. Business transitions are scheduled in docs/implementation-plan.md. */
+/** A requirement owned by a campaign, not an independently saved aggregate. */
 public final class CampaignRequirement extends Entity<RequirementId> {
     private final String description;
     private final boolean mandatory;
 
     public CampaignRequirement(RequirementId id, String description, boolean mandatory) {
         super(id);
-        this.description = description;
+        this.description = com.collabtech.platform.campaign.domain.model.valueobjects.CampaignText.required(description, 2000);
         this.mandatory = mandatory;
     }
 

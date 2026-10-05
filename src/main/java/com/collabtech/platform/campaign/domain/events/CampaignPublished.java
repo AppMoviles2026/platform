@@ -5,5 +5,5 @@ import com.collabtech.platform.campaign.domain.model.valueobjects.CampaignId;
 import java.time.Instant;
 import java.util.UUID;
 
-/** Event contract reserved for future aggregate transitions. */
+/** Recorded internally when a complete campaign is published. */
 public record CampaignPublished(UUID eventId, Instant occurredAt, CampaignId campaignId) implements DomainEvent {}

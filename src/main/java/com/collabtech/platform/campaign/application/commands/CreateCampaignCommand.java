@@ -5,4 +5,4 @@ import com.collabtech.platform.campaign.domain.model.valueobjects.BrandId;
 
 import com.collabtech.platform.shared.application.cqrs.Command;
 
-public record CreateCampaignCommand(BrandId brandId, String title, String objective, String description, String category, String targetAudience, String location) implements Command<CampaignId> {}
+public record CreateCampaignCommand(BrandId brandId, String brandName, String title, String objective, String description, String category, String targetAudience, String location) implements Command<CampaignId> {}

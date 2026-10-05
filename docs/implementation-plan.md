@@ -4,7 +4,7 @@
 
 Actualización de alcance: 05/10/2026. Las posiciones 1 a 8 corresponden a landing y no se implementan en este backend. Se retiró la implementación informativa de US-01/US-02. US-09 y US-10 se implementan como registro de empresa y creador en Identity.
 
-La base inicial creó contratos y modelos Java. US-09/10 tienen registro persistido; US-11/13/14 tienen acceso, recuperación, consulta/edición del perfil y asociación OAuth en Identity. MySQL y Mailpit se ejecutan en Docker. Ver [registro](registration-api.md) y [contratos/configuración de US-11/13/14](identity-access-profile-social-api.md). OAuth real necesita credenciales y permisos del proveedor, todavía no verificados; Campaign permanece planificado. No se generan sesiones al registrar.
+La base inicial creó contratos y modelos Java. Identity implementa registro US-09/10, acceso/recuperación US-11, perfil US-13 y flujo OAuth US-14. Campaign implementa preparación, condiciones y publicación US-15/16. Ver [registro](registration-api.md), [Identity](identity-access-profile-social-api.md) y [Campaign US-15/16](campaign-preparation-api.md). MySQL/Mailpit se ejecutan en Docker. OAuth real, búsqueda/detalle público y postulaciones siguen pendientes. No se generan sesiones al registrar.
 
 Fuentes locales de la base, contrastadas nuevamente con el reporte el 05/10/2026:
 
@@ -23,12 +23,8 @@ Las posiciones 1–8 (US-01 a US-08) quedan excluidas del backend. La tabla sigu
 |---:|---|---|---|
 | 9 | US-17 Búsqueda de campañas | CampaignSearchScreen / CAMPAIGN_SEARCH | Campaign: búsqueda paginada por texto/categoría y respuesta vacía. |
 | 11 | US-19 Postulación | ApplicationFormScreen, MyApplicationsScreen | Campaign: presentar, consultar propias, editar/cancelar pendiente. |
-| 12 | US-10 Registro creador | RegisterScreen(brand=false) / REGISTER_CREATOR | Implementada: POST /api/v1/auth/creators crea Account + CreatorProfile inicial. |
-| 13 | US-11 Acceso/recuperación | LoginScreen, RecoverScreen | Implementada: autenticación Bearer, rol servidor, correo y reset de un solo uso. |
-| 14 | US-13 Perfil creador | ProfileScreen(brand=false) / CREATOR_PROFILE | Implementada: lectura/actualización propia persistida y protegida. |
-| 15 | US-14 Redes sociales | SocialAccountsScreen / SOCIAL_ACCOUNTS | Implementados inicio/callback OAuth y listado persistido; autorización real pendiente de credenciales/permisos. |
-| 16 | US-15 Creación campaña | CampaignFormScreen / CAMPAIGN_FORM | Campaign: borrador y publicación solo tras condiciones completas. |
-| 17 | US-16 Condiciones campaña | CampaignTermsScreen / CAMPAIGN_TERMS | Campaign: requisitos, entregables, plazos y compensación. |
+| 16 | US-15 Creación campaña | CampaignFormScreen / CAMPAIGN_FORM | Implementada: borrador y publicación OPEN solo tras condiciones completas; visibilidad básica para creadores. |
+| 17 | US-16 Condiciones campaña | CampaignTermsScreen / CAMPAIGN_TERMS | Implementada: requisitos, especificaciones, plazos y compensación persistidos atómicamente. |
 
 **US-05:** sus escenarios exigen registrar y confirmar una consulta; un botón que cambia estado local no cumple ese requisito. Se considera parte de la landing excluida por el alcance indicado y no se inventa un contexto de soporte dentro de Identity o Shared. En el trabajo de landing debe acordarse un servicio externo de contacto o documentar un contexto de soporte si se quiere que CollabPro almacene estas solicitudes. Se conserva su posición 5, sin reemplazarla.
 
@@ -47,7 +43,7 @@ La asignación se basa en 2.5.1.3 (canvases), 2.5.2 (Context Map) y 2.6 (modelo 
 | Contexto | Responsabilidad y modelo propios | Lo que no le corresponde | Uso en las primeras 18 posiciones |
 |---|---|---|---|
 | Identity & Profile Management (`identity`) | Registro, acceso, recuperación, perfiles y asociación social autorizada. Aggregate Root: Account; perfiles y SocialMediaAccount dentro de su límite. | Contenido de landing, crear campañas, decidir elegibilidad de una postulación, ejecutar colaboraciones, procesar pagos u obtener reportes de métricas. | US-09/10/11/13 implementadas y flujo backend US-14; validar OAuth con proveedores reales. |
-| Campaign Management (`campaign`) | Oportunidades antes del acuerdo: Campaign, requisitos, especificaciones, CompensationTerms y Application como agregado independiente. | Entregables realizados, acuerdo bilateral, validación de evidencias, cobro o métricas de resultados. | US-15, US-16, US-17, US-18, US-19. |
+| Campaign Management (`campaign`) | Oportunidades antes del acuerdo: Campaign, requisitos, especificaciones, CompensationTerms y Application como agregado independiente. | Entregables realizados, acuerdo bilateral, validación de evidencias, cobro o métricas de resultados. | US-15/16 implementadas; US-17/18/19 pendientes. |
 | Collaboration Management (`collaboration`) | Acuerdo aceptado y ejecución: Collaboration, snapshot de condiciones, entregables reales, revisión e incidencias. | Búsqueda de oportunidades y postulaciones pendientes; procesamiento financiero o APIs de métricas. | Ningún caso de uso transaccional del corte. Se conserva la estructura, sin handlers nuevos. |
 | Billing & Compensation Management (`billing`) | Métodos de pago, suscripciones, compensaciones autorizadas y transacciones. | La oferta de compensación de una campaña o explicar al visitante cómo funciona un pago. | Ninguno. CompensationTerms de US-16/18 sigue siendo de Campaign. |
 | Performance & Attribution Management (`performance`) | Métricas con fuente y periodo, evidencias de desempeño y atribución. | Registro/autorización de una cuenta social o descripción de audiencia del perfil. | Ninguno. US-14 pertenece a Identity, aunque habilite futuras consultas de Performance. |
@@ -69,7 +65,7 @@ La transacción del adapter persiste Account y perfil juntos y traduce UNIQUE de
 - **Interfaces:** controllers REST, recursos/request DTOs, ensambladores, errores HTTP y facades publicadas de cada contexto. Reciben datos y delegan; no contienen reglas de negocio.
 - **Shared:** identidad de entidades/agregados, eventos, contratos CQRS, paginación, actor autenticado y contrato de error. No alberga perfiles, campañas, compensaciones ni un repositorio universal.
 
-Dependencias: Interfaces/Infrastructure → Application → Domain → Shared.Domain. Application también usa Shared.Application. El código interno de Campaign nunca depende de Account/CreatorProfile/JPA de Identity. `IdentityProfileGateway` define el snapshot que Campaign necesita; un adapter ACL de Campaign consultará una facade de Identity en Interfaces. No habrá joins/repositorios cruzados ni asociaciones JPA entre contextos.
+Dependencias: Interfaces/Infrastructure → Application → Domain → Shared.Domain. Application también usa Shared.Application. Campaign no depende de Account/CreatorProfile/JPA de Identity. CampaignActorGateway verifica la cuenta autenticada mediante un adapter ACL que consume IdentityProfileFacade publicada en Interfaces. IdentityProfileGateway queda reservado para futuros hechos de elegibilidad de US-19. No hay joins/repositorios cruzados ni asociaciones JPA entre contextos.
 
 Los adapters entre contextos dependen únicamente del contrato publicado, nunca de entidades o repositorios internos. La composición Spring conecta esos adapters en Infrastructure. Las reglas de Campaign reciben datos de referencia tipados, no objetos Account ni tokens OAuth. La fachada de Identity entrega solo datos necesarios para el caso de uso; un fallo al verificar identidad o requisitos no se interpreta como autorización concedida.
 
@@ -77,7 +73,7 @@ En esta base, Identity y Campaign tienen modelos/puertos tipados. Collaboration,
 
 ## Trazabilidad por historia: contexto, capas y escenarios
 
-US-09 y US-10 están implementadas en el backend; los handlers/contratos de las demás historias de backend siguen siendo objetivos del plan. Se mantienen exactamente las 18 posiciones. Las primeras ocho filas son trazabilidad de landing, no trabajo backend.
+US-09/10/11/13/14 y US-15/16 tienen implementación backend; OAuth real requiere validación y US-17/18/19 siguen planificadas. Se mantiene el corte de las primeras 18 posiciones. Landing no se implementa en backend.
 
 | Posición / US | Dueño y modelo | Application y dependencias | Interfaces / Infrastructure | Escenarios y límite de implementación |
 |---|---|---|---|---|
@@ -93,11 +89,8 @@ US-09 y US-10 están implementadas en el backend; los handlers/contratos de las 
 | 10 / US-18 | Campaign; lectura de Campaign y sus condiciones locales. | GetCampaignDetailsQuery/handler; determina acceptsApplications con estado y reloj servidor. | CampaignController; adapter de lectura con requisitos, especificaciones, plazos y CompensationTerms. | Campaña abierta: condiciones completas; cerrada: informar que no admite postulaciones. Compensación ofrecida no equivale a pago procesado por Billing. |
 | 11 / US-19 | Campaign; Application como agregado separado, referencia a Campaign y CreatorId. | Submit/Update/CancelApplicationCommand handlers; GetCreatorApplications/GetApplicationDetailsQuery handlers; ApplicationEligibilityService recibe hechos mediante IdentityProfileGateway. | ApplicationController; repositorio local, restricción de duplicados, concurrencia y autorización del propietario. | Pendiente válida, duplicado, requisito incumplido identificado, edición y cancelación solo pendientes. No seleccionar postulantes (US-20) ni crear colaboración (US-21). |
 | 12 / US-10 | Identity; Account(CREATOR) con CreatorProfile inicial. | RegisterCreatorCommand/handler, AccountRepository y PasswordHasher. | AuthController; persistencia local de cuenta/perfil, email normalizado UNIQUE y hash. | Registro válido y correo existente. Sin Campaign ni Performance, aunque el objetivo futuro sea encontrar oportunidades. |
-| 13 / US-11 | Identity; Account y estado/credenciales. | AuthenticateAccountCommand y RecoverAccountCommand handlers; AccessTokenProvider y AccountRecoveryService. Añadir contrato de finalización de recuperación. | AuthController; seguridad, correo y almacenamiento de token de recuperación de un uso en Infrastructure. | Cuenta activa con credenciales válidas, denegación de acceso y recuperación iniciada. Rol del servidor; no confiar en selector o IDs del cliente. |
-| 14 / US-13 | Identity; CreatorProfile dentro de Account, no un nuevo agregado independiente. | GetUserProfileQuery y UpdateCreatorProfileCommand handlers; validar campos y propietario. | UserProfileController; persistencia del agregado Account y su perfil en una transacción. | Registro de contenido/audiencia y actualización permitida. Descripción de audiencia no son métricas verificadas de Performance. |
-| 15 / US-14 | Identity; SocialMediaAccount pertenece a CreatorProfile dentro de Account. | Start/CompleteSocialAuthorizationCommand y GetLinkedSocialMediaQuery handlers; puerto SocialOAuthClient. | SocialMediaController; ACL del proveedor, state/consentimiento y tokens protegidos en Infrastructure. | Autorización válida, rechazo sin vínculo y duplicado impedido. No implementar obtención de métricas US-29 ni modelar tokens del proveedor en Domain. |
-| 16 / US-15 | Campaign; Campaign, con BrandId externo. | CreateCampaignCommand y PublishCampaignCommand handlers; GetBrandCampaignsQuery para reconstruir pantalla; IdentityProfileGateway verifica empresa habilitada. | CampaignController; CampaignRepository adapter, transacciones y optimistic locking. | Creación completa se vuelve visible a creadores registrados; información incompleta no se publica. DRAFT técnico no satisface por sí solo el escenario válido. |
-| 17 / US-16 | Campaign; requisitos, DeliverableSpecification y CompensationTerms dentro de Campaign. | DefineCampaignConditionsCommand/handler; invariantes de fechas, cantidades y compensación en dominio. | CampaignController; tablas propias del agregado y mapper local. | Condiciones válidas asociadas y condiciones incompatibles rechazadas sin guardar parcialmente. Especificación esperada no es entregable real de Collaboration; oferta no es transacción de Billing. |
+| 16 / US-15 | Campaign; Campaign, con BrandId externo. | Create/PublishCampaignCommandHandler y GetBrand/GetPublishedCampaignsQueryHandler; CampaignActorGateway verifica empresa/creador habilitado. | CampaignController; JPA, transacciones y optimistic locking implementados. | Publicación completa OPEN visible a creadores, incompletitud impedida. DRAFT técnico no satisface por sí solo el escenario válido. |
+| 17 / US-16 | Campaign; requisitos, DeliverableSpecification y CompensationTerms dentro de Campaign. | DefineCampaignConditionsCommandHandler implementado; invariantes de fechas, cantidades y compensación en dominio. | CampaignController; tablas propias y mapper; reemplazo atómico y condiciones congeladas tras publicar. | Condiciones válidas asociadas e incompatibles rechazadas sin guardar parcialmente. Especificación no es entregable real de Collaboration; oferta no es transacción de Billing. |
 | 18 / US-09 | Identity; Account(BRAND) y BrandProfile inicial. | RegisterBrandCommand/handler, mismo control de unicidad que creador y PasswordHasher. | AuthController; persistencia local del agregado y perfil empresarial. | Registro válido y correo duplicado. No implementar edición empresarial US-12 ni crear automáticamente una campaña o suscripción. |
 
 ### Contextos reservados y relación con historias fuera del corte
@@ -116,17 +109,17 @@ Un flujo futuro puede coordinar varios contextos, pero cada uno conserva sus reg
 | Billing (reservado) | PaymentAccount, Subscription y Compensation separados; PaymentMethod/PaymentTransaction; Money. | Referencias tokenizadas del proveedor; jamás PAN/CVV. No confundir oferta de Campaign con pago procesado. |
 | Performance (reservado) | PerformanceReport, MetricSnapshot, PerformanceEvidence, AttributionLink e interacciones. | Mantener fuente y periodo; diferenciar datos automáticos y manuales. |
 
-Los IDs se modelan como UUID como propuesta técnica: el diagrama solo especifica “identifier”. Al persistir, decidir uniformemente CHAR(36) o BINARY(16) en MySQL y documentar la conversión. La app usa actualmente IDs Int de muestra; debe pasar a IDs String/UUID al integrar.
+Los IDs usan UUID como propuesta técnica: el diagrama solo especifica “identifier”. Identity y Campaign persisten CHAR(36). La app usa IDs Int de muestra; debe pasar a String/UUID al integrar. Campaign agrega snapshot brandName y versión técnica para lectura/concurrencia, sin FK a Identity.
 
 Campos añadidos al esqueleto para cubrir inputs existentes de la app: CreatorProfile.location; Campaign.category, targetAudience y location. Son extensiones del diagrama, no datos ya presentes allí. La ubicación puede precargarse del BrandProfile inicial, sin implementar edición de perfil empresarial US-12. Actualizar UML/diagramas cuando se confirme el modelo.
 
 CampaignRequirement se conserva como **entidad** por tener requirementId y una fila propia en el diagrama. CompensationTerms es un value object local a Campaign, almacenado junto al agregado; aún no implica cobrar o activar Billing.
 
-Account implementa factories de registro e invariantes de perfil/tipo, correo y hash requerido. Los agregados de Campaign aún son estructurales; faltan transiciones como publish, defineConditions, submit/update/cancel. No usar setters genéricos que permitan saltar las transiciones.
+Account implementa invariantes y transiciones de Identity. Campaign implementa draft, defineConditions y publish con invariantes y evento interno CampaignPublished. Application aún es estructural; submit/update/cancel no están implementados. No usar setters genéricos para saltar transiciones de negocio.
 
-## Contratos REST: Identity implementado y Campaign futuro
+## Contratos REST: Identity y preparación Campaign implementados
 
-Las rutas de Identity de esta tabla están implementadas. Las rutas de Campaign/Application siguen siendo propuestas. Ver [registro](registration-api.md) y [acceso/perfil/OAuth](identity-access-profile-social-api.md). El callback OAuth devuelve JSON; la integración de retorno a la app sigue pendiente.
+Identity, creación/condiciones/publicación, consulta propia y listado básico publicado están implementados. Search/detalle público y Application siguen siendo propuestas. Ver [registro](registration-api.md), [Identity](identity-access-profile-social-api.md) y [Campaign](campaign-preparation-api.md). Callback OAuth devuelve JSON; retorno a la app pendiente.
 
 Prefijo `/api/v1`. UUID como string, fechas ISO-8601 y tiempos UTC con zona; convertir desde dd/mm/aaaa y formatear en el cliente. Nombres de propiedades y estados en inglés, traducidos en Compose. Paginación desde cero; límite 1–100. Ningún ID de actor o rol enviado por la app será autoridad: derivarlo del token autenticado y su perfil.
 
@@ -144,8 +137,9 @@ Prefijo `/api/v1`. UUID como string, fechas ISO-8601 y tiempos UTC con zona; con
 | GET /social-accounts/{platform}/callback | validar state/código/error y vincular solo con consentimiento válido; devuelve JSON | Browser OAuth; app link de retorno pendiente |
 | GET /social-accounts/me | lista de platform, username, status; no tokens | SocialAccountsScreen US-14 |
 | GET /campaigns?q=&category=&page=&size= | PageResult<Summary>; items=[] si sin coincidencias | Búsqueda US-17 |
-| GET /campaigns/{id} | Details con condiciones y acceptsApplications | Detalle US-18 |
+| GET /campaigns/{id} | Detalle propio implementado; lectura pública de condiciones para creadores pendiente | Recuperar formulario US-15/16; detalle público US-18 futuro |
 | GET /campaigns/mine | campañas propias, incluye borradores | BrandCampaignsScreen, apoyo a US-15/16 |
+| GET /campaigns/published | listado básico OPEN para creadores; sin filtros US-17 | Visibilidad de US-15 implementada |
 | POST /campaigns | metadatos → 201 id, status=DRAFT | Paso 1 US-15 |
 | PUT /campaigns/{id}/conditions | requisitos, entregables, fechas, compensación → condiciones guardadas | Paso 2 US-16 |
 | POST /campaigns/{id}/publication | publicar completa → OPEN visible a creadores | Finalizar US-15 |
@@ -169,7 +163,7 @@ Se retiró toda la implementación exclusiva de US-01/US-02 y su documento de AP
 
 Crear entidades JPA/mappers en Infrastructure sin anotar el dominio. Versionar esquema con migraciones; fijar índices y restricciones anteriores. Añadir optimistic locking al modelo persistido y transacciones en handlers. Crear datos de desarrollo controlados con campañas abiertas/cerradas, nunca simular que son productivos. Configurar perfil local MySQL separado del perfil skeleton; no usar ddl-auto=create/update en entornos compartidos.
 
-Completado para Identity: entidades JPA, mapper, adapter transaccional, migraciones V1/V2 y versión de Account; sesiones/recuperación/state/credenciales por JDBC transaccional. Local usa MySQL Docker y Mailpit; skeleton sigue opcional. Persistencia de Campaign permanece pendiente. El dominio no tiene anotaciones JPA.
+Completado para Identity: JPA/JDBC, migraciones V1/V2 y versión de Account. Campaign agrega JPA/mapper, versión optimista y V3/V4 para campaña/requisitos/especificaciones y fechas DATETIME(6) UTC. No hay tabla Application ni FK entre contextos. Local usa Docker MySQL/Mailpit; Domain sigue sin anotaciones JPA.
 
 ### 2. Identity: US-10, US-11 y US-09
 
@@ -189,9 +183,11 @@ OAuth se inicia desde servidor, registra state con propietario, proveedor, caduc
 
 ### 4. Campañas: US-15/US-16
 
+Estado: implementadas dentro de Campaign. Se exponen los tres commands del flujo, consulta propia, GetBrandCampaignsQuery y GetPublishedCampaignsQuery. Domain valida preparación completa, publicación y condiciones; Infrastructure persiste/transacciona y consulta Identity mediante su fachada. Las pruebas verifican visibilidad a varios creadores, propiedad, incompatibilidad, rollback y concurrencia. No se modificó la app. Los pasos siguientes describen la integración y las reglas ya aplicadas.
+
 CreateCampaignCommandHandler crea DRAFT con propietario autenticado habilitado. La primera pantalla requiere título, objetivo, categoría y público; su estado debe mantenerse al pasar al segundo paso. DefineCampaignConditionsCommandHandler verifica requisitos/entregables, cantidad positiva, compensación válida y fechas consistentes; guarda en una transacción. PublishCampaignCommandHandler comprueba completitud y cambia a OPEN con publicationDate. Fallo mantiene DRAFT y muestra errores; US-15 solo se considera cumplida cuando la campaña queda publicada y visible, no por crear un borrador.
 
-Definir claramente applicationDeadline y deadline de entregables: el prototipo tiene una única fecha, el modelo de dominio distingue ambas. Añadir campos o una regla explícita al formulario; no asumir que la fecha de entrega ocurre antes del cierre de postulaciones. Propuesta: plazos de entrega posteriores al cierre de postulaciones; confirmar con el dominio y validar ambos con Clock controlable.
+ApplicationDeadline y deadline por entregable son distintos. Se aplicó la propuesta del plan: cierre futuro y entregas estrictamente posteriores al cierre; revalidación al publicar. DATETIME(6) evita restringir fechas introducidas a 2038. El prototipo tiene una sola fecha y deberá incorporar ambos campos al integrar; no se inventa automáticamente una fecha en el backend. También deben estructurarse cantidad y compensación.
 
 ### 5. Búsqueda/detalle: US-17/US-18
 
@@ -226,4 +222,4 @@ La base requiere compilación y comprobación de límites de dependencias. US-09
 
 ## Entregables del siguiente paso
 
-La retirada de US-01/02, registro US-09/10 y backend de US-11/13/14 están implementados dentro de Identity. Restan configurar/validar OAuth real, integrar el cliente, Campaign y OpenAPI. No se implementaron esas fases ni historias fuera del corte en esta tarea.
+Identity US-09/10/11/13/14 y Campaign US-15/16 tienen backend. Restan OAuth real, integración móvil, búsqueda US-17, detalle público US-18, postulaciones US-19 y OpenAPI. No se implementaron esas fases ni historias fuera del corte en esta tarea.

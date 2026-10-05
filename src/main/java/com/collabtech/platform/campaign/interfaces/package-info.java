@@ -1,4 +1,4 @@
 /**
- * Reserved for REST resources, DTO mapping and published context facades. No endpoints registered by this scaffold.
+ * REST endpoints and DTO mapping for campaign preparation, publication and basic visibility.
  */
 package com.collabtech.platform.campaign.interfaces;

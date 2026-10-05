@@ -1,4 +1,4 @@
 /**
- * Reserved for persistence/external adapters and composition. No fake repositories or provider integrations.
+ * Campaign JPA persistence, Identity ACL and Spring transaction composition. No fake repositories.
  */
 package com.collabtech.platform.campaign.infrastructure;
