@@ -15,8 +15,10 @@ public final class CampaignRequests {
     public record Create(@NotBlank @Size(max=200) String title, @NotBlank @Size(max=2000) String objective,
             @Size(max=5000) String description, @NotBlank @Size(max=100) String category,
             @NotBlank @Size(max=2000) String targetAudience, @Size(max=150) String location) {}
-    public record Requirement(@NotBlank @Size(max=2000) String description, @NotNull Boolean mandatory) {
-        public CampaignViews.Requirement view() { return new CampaignViews.Requirement(UUID.randomUUID(), description, mandatory); }
+    public record Requirement(@NotBlank @Size(max=2000) String description, @NotNull Boolean mandatory,
+            com.collabtech.platform.campaign.domain.model.valueobjects.RequirementRule.Type ruleType, @Size(max=150) String expectedValue) {
+        public CampaignViews.Requirement view() { return new CampaignViews.Requirement(UUID.randomUUID(), description, mandatory,
+                new com.collabtech.platform.campaign.domain.model.valueobjects.RequirementRule(ruleType == null ? com.collabtech.platform.campaign.domain.model.valueobjects.RequirementRule.Type.MANUAL_CONFIRMATION : ruleType, expectedValue)); }
     }
     public record Deliverable(@NotBlank @Size(max=100) String contentType, @NotBlank @Size(max=2000) String description,
             @NotNull @Min(1) @Max(1000) Integer quantity, @NotNull Instant deadline) {

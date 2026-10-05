@@ -5,5 +5,5 @@ import com.collabtech.platform.campaign.domain.model.valueobjects.ApplicationId;
 import java.time.Instant;
 import java.util.UUID;
 
-/** Event contract reserved for future aggregate transitions. */
+/** Internal event recorded when a creator submits a pending application. */
 public record ApplicationSubmitted(UUID eventId, Instant occurredAt, ApplicationId applicationId) implements DomainEvent {}

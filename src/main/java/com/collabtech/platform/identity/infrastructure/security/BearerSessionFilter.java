@@ -30,7 +30,7 @@ public final class BearerSessionFilter extends OncePerRequestFilter {
     }
     static void reject(HttpServletResponse response) throws IOException {
         response.setStatus(401); response.setHeader("WWW-Authenticate", "Bearer");
-        response.setContentType("application/json"); response.setHeader("Cache-Control", "no-store");
+        response.setContentType("application/json;charset=UTF-8"); response.setHeader("Cache-Control", "no-store");
         response.getWriter().write("{\"code\":\"UNAUTHORIZED\",\"message\":\"Se requiere una sesión válida.\",\"fieldErrors\":{}}");
     }
 }

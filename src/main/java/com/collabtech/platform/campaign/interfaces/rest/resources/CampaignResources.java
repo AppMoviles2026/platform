@@ -13,7 +13,7 @@ public final class CampaignResources {
     public record Compensation(String type, BigDecimal amount, String currency, String description) {}
     public record Summary(UUID id, UUID brandId, String brandName, String title, String category, String location,
             Compensation compensation, Instant applicationDeadline, String status) {}
-    public record Requirement(UUID id, String description, boolean mandatory) {}
+    public record Requirement(UUID id, String description, boolean mandatory, String ruleType, String expectedValue) {}
     public record Deliverable(UUID id, String contentType, String description, int quantity, Instant deadline) {}
     public record Details(UUID id, UUID brandId, String brandName, String title, String category, String location,
             String objective, String description, String targetAudience, Compensation compensation,
@@ -33,7 +33,7 @@ public final class CampaignResources {
         var info = view.summary();
         return new Details(info.id(), info.brandId(), info.brandName(), info.title(), info.category(), info.location(),
                 view.objective(), view.description(), view.targetAudience(), compensation(info.compensation()), info.applicationDeadline(),
-                info.status(), view.publicationDate(), view.requirements().stream().map(item -> new Requirement(item.id(), item.description(), item.mandatory())).toList(),
+                info.status(), view.publicationDate(), view.requirements().stream().map(item -> new Requirement(item.id(), item.description(), item.mandatory(), item.rule().type().name(), item.rule().expectedValue())).toList(),
                 view.deliverables().stream().map(item -> new Deliverable(item.id(), item.contentType(), item.description(), item.quantity(), item.deadline())).toList(), view.acceptsApplications());
     }
 }

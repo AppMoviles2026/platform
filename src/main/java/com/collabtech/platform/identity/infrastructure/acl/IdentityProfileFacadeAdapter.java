@@ -23,7 +23,10 @@ public class IdentityProfileFacadeAdapter implements IdentityProfileFacade {
             return new IdentityProfileFacade.Profile(brand ? account.brandProfile().id().value() : account.creatorProfile().id().value(),
                     brand ? account.brandProfile().businessName() : account.creatorProfile().displayName(),
                     brand ? account.brandProfile().location() : account.creatorProfile().location(), account.accountType().name(),
-                    account.status() == AccountStatus.ACTIVE);
+                    account.status() == AccountStatus.ACTIVE, brand ? null : account.creatorProfile().niche(),
+                    brand ? null : account.creatorProfile().audienceDescription(), brand ? java.util.Set.of() : account.creatorProfile().socialMediaAccounts().stream()
+                            .filter(social -> social.status() == com.collabtech.platform.identity.domain.model.valueobjects.SocialAccountStatus.ACTIVE)
+                            .map(social -> social.platform().code()).collect(java.util.stream.Collectors.toSet()));
         });
     }
 }

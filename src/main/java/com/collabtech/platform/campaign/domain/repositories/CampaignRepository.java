@@ -8,4 +8,5 @@ import java.util.Optional;
 public interface CampaignRepository {
     Campaign save(Campaign campaign);
     Optional<Campaign> findById(CampaignId id);
+    Optional<Campaign> findByIdForUpdate(CampaignId id);
 }

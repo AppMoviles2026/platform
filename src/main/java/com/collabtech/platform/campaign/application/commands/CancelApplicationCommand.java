@@ -5,4 +5,6 @@ import com.collabtech.platform.campaign.domain.model.valueobjects.CreatorId;
 
 import com.collabtech.platform.shared.application.cqrs.Command;
 
-public record CancelApplicationCommand(CreatorId creatorId, ApplicationId applicationId) implements Command<ApplicationId> {}
+public record CancelApplicationCommand(CreatorId creatorId, ApplicationId applicationId, Long expectedVersion) implements Command<ApplicationId> {
+    public CancelApplicationCommand(CreatorId creatorId, ApplicationId applicationId) { this(creatorId, applicationId, null); }
+}

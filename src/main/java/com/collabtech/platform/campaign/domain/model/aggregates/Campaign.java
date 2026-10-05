@@ -63,6 +63,7 @@ public final class Campaign extends AggregateRoot<CampaignId> {
     public List<CampaignRequirement> requirements() { return requirements; }
     public List<DeliverableSpecification> deliverables() { return deliverables; }
     public CompensationTerms compensationTerms() { return compensationTerms; }
+    public boolean acceptsApplications(Instant now) { return status == CampaignStatus.OPEN && applicationDeadline != null && applicationDeadline.isAfter(now); }
     public long version() { return version; }
     public void restoreVersion(long version) { if (version < 0) throw new IllegalArgumentException("Invalid version"); this.version = version; }
 

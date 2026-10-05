@@ -30,11 +30,11 @@ public class IdentitySecurityConfiguration {
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, failure) -> {
                             response.setStatus(401); response.setHeader("WWW-Authenticate", "Bearer");
-                            response.setContentType("application/json");
+                            response.setContentType("application/json;charset=UTF-8");
                             response.getWriter().write("{\"code\":\"UNAUTHORIZED\",\"message\":\"Se requiere una sesión válida.\",\"fieldErrors\":{}}");
                         })
                         .accessDeniedHandler((request, response, failure) -> {
-                            response.setStatus(403); response.setContentType("application/json");
+                            response.setStatus(403); response.setContentType("application/json;charset=UTF-8");
                             response.getWriter().write("{\"code\":\"FORBIDDEN\",\"message\":\"Acceso no permitido.\",\"fieldErrors\":{}}");
                         }))
                 .addFilterBefore(new BearerSessionFilter(tokens), AnonymousAuthenticationFilter.class).build();

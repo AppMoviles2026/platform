@@ -16,7 +16,7 @@ public final class DefineCampaignConditionsCommandHandler implements com.collabt
     public com.collabtech.platform.campaign.domain.model.valueobjects.CampaignId handle(DefineCampaignConditionsCommand command) {
         var campaign = campaigns.findById(command.campaignId()).orElseThrow(() -> new CampaignFailure(CampaignFailure.Code.CAMPAIGN_NOT_FOUND));
         if (!campaign.brandId().equals(command.brandId())) throw new CampaignFailure(CampaignFailure.Code.FORBIDDEN);
-        var requirements = command.requirements().stream().map(row -> new CampaignRequirement(new RequirementId(row.id()), row.description(), row.mandatory())).toList();
+        var requirements = command.requirements().stream().map(row -> new CampaignRequirement(new RequirementId(row.id()), row.description(), row.mandatory(), row.rule())).toList();
         var deliverables = command.deliverables().stream().map(row -> new DeliverableSpecification(new SpecificationId(row.id()), row.contentType(), row.description(), row.quantity(), row.deadline())).toList();
         campaign.defineConditions(requirements, deliverables, command.applicationDeadline(), command.compensation(), clock.instant());
         return campaigns.save(campaign).id();

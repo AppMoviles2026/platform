@@ -1,6 +1,8 @@
 package com.collabtech.platform.campaign.interfaces.rest;
 
 import com.collabtech.platform.campaign.application.services.CampaignPreparationService;
+import com.collabtech.platform.campaign.application.services.CampaignDiscoveryService;
+import com.collabtech.platform.campaign.domain.model.valueobjects.CompensationType;
 import com.collabtech.platform.campaign.domain.model.valueobjects.CampaignId;
 import com.collabtech.platform.campaign.interfaces.rest.resources.*;
 import com.collabtech.platform.shared.application.security.CurrentActor;
@@ -15,7 +17,14 @@ import org.springframework.web.bind.annotation.*;
 @RestController @Profile("!skeleton") @RequestMapping("/api/v1/campaigns")
 public class CampaignController {
     private final CampaignPreparationService service; private final CurrentActor actor;
-    public CampaignController(CampaignPreparationService service, CurrentActor actor) { this.service = service; this.actor = actor; }
+    private final CampaignDiscoveryService discovery;
+    public CampaignController(CampaignPreparationService service, CurrentActor actor, CampaignDiscoveryService discovery) { this.service = service; this.actor = actor; this.discovery = discovery; }
+    @GetMapping
+    public PageResult<CampaignResources.Summary> search(@RequestParam(required=false) String q, @RequestParam(required=false) String category,
+            @RequestParam(required=false) String location, @RequestParam(required=false) CompensationType compensationType,
+            @RequestParam(defaultValue="0") int page, @RequestParam(defaultValue="20") int size) {
+        return CampaignResources.page(discovery.search(actor.accountId(), q, category, location, compensationType, new PageRequest(page,size)));
+    }
     @PostMapping
     public ResponseEntity<CampaignResources.Details> create(@Valid @RequestBody CampaignRequests.Create body) {
         var result = CampaignResources.details(service.create(actor.accountId(), body.title(), body.objective(), body.description(), body.category(), body.targetAudience(), body.location()));
@@ -29,7 +38,7 @@ public class CampaignController {
     @PostMapping("/{id}/publication")
     public CampaignResources.Details publish(@PathVariable UUID id) { return CampaignResources.details(service.publish(actor.accountId(), new CampaignId(id))); }
     @GetMapping("/{id}")
-    public CampaignResources.Details own(@PathVariable UUID id) { return CampaignResources.details(service.own(actor.accountId(), new CampaignId(id))); }
+    public CampaignResources.Details own(@PathVariable UUID id) { return CampaignResources.details(discovery.details(actor.accountId(), new CampaignId(id))); }
     @GetMapping("/mine")
     public PageResult<CampaignResources.Summary> mine(@RequestParam(defaultValue="0") int page, @RequestParam(defaultValue="20") int size) {
         return CampaignResources.page(service.mine(actor.accountId(), new PageRequest(page, size)));

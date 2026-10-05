@@ -11,7 +11,8 @@ final class CampaignPersistenceMapper {
         var compensation = row.compensationType == null ? null : new CompensationTerms(CompensationType.valueOf(row.compensationType), row.amount, row.currency, row.compensationDescription);
         var result = new Campaign(new CampaignId(UUID.fromString(row.id)), new BrandId(UUID.fromString(row.brandId)), row.title, row.objective,
                 row.description, row.category, row.audience, row.location, CampaignStatus.valueOf(row.status), row.publicationDate, row.applicationDeadline,
-                row.requirements.stream().map(item -> new CampaignRequirement(new RequirementId(UUID.fromString(item.id)), item.description, item.mandatory)).toList(),
+                row.requirements.stream().map(item -> new CampaignRequirement(new RequirementId(UUID.fromString(item.id)), item.description, item.mandatory,
+                        new RequirementRule(RequirementRule.Type.valueOf(item.ruleType), item.expectedValue))).toList(),
                 row.deliverables.stream().map(item -> new DeliverableSpecification(new SpecificationId(UUID.fromString(item.id)), item.contentType, item.description, item.quantity, item.deadline)).toList(), compensation);
         result.restoreVersion(row.version); return result;
     }
@@ -29,6 +30,7 @@ final class CampaignPersistenceMapper {
                 var added = new CampaignRequirementJpaEntity(); added.id = item.id().value().toString(); added.campaign = row; row.requirements.add(added); return added;
             });
             entity.description = item.description(); entity.mandatory = item.mandatory();
+            entity.ruleType = item.rule().type().name(); entity.expectedValue = item.rule().expectedValue();
         }
         row.deliverables.removeIf(item -> campaign.deliverables().stream().noneMatch(value -> value.id().value().toString().equals(item.id)));
         for (var item : campaign.deliverables()) {

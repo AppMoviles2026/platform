@@ -17,7 +17,7 @@ try {
     $env:COLLABPRO_TEST_MAILPIT = 'true'
     $env:MAVEN_USER_HOME = Join-Path ([System.IO.Path]::GetTempPath()) 'collabpro-scaffold-maven-cache'
     & .\mvnw.cmd -B clean test
-    if ($LASTEXITCODE -ne 0) { throw 'MySQL Identity / SMTP tests failed' }
+    if ($LASTEXITCODE -ne 0) { throw 'MySQL backend Identity / Campaign / SMTP tests failed' }
 } finally {
     foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $previousValues[$name], 'Process') }
     Set-Location -LiteralPath $previousLocation.Path

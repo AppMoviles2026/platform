@@ -19,8 +19,16 @@ public class IdentityCampaignActorAdapter implements CampaignActorGateway {
         if (!profile.type().equals("BRAND")) throw new CampaignFailure(CampaignFailure.Code.BRAND_REQUIRED);
         return new Brand(new BrandId(profile.profileId()), profile.name(), profile.location());
     }
+    public boolean isBrand(UUID accountId) { return active(accountId).type().equals("BRAND"); }
     public void requireActiveCreator(UUID accountId) {
-        if (!active(accountId).type().equals("CREATOR")) throw new CampaignFailure(CampaignFailure.Code.CREATOR_REQUIRED);
+        getActiveCreator(accountId);
+    }
+    public Creator getActiveCreator(UUID accountId) {
+        var profile = active(accountId);
+        if (!profile.type().equals("CREATOR")) throw new CampaignFailure(CampaignFailure.Code.CREATOR_REQUIRED);
+        return new Creator(new com.collabtech.platform.campaign.domain.model.valueobjects.CreatorId(profile.profileId()),
+                new com.collabtech.platform.campaign.domain.services.ApplicationEligibilityService.EligibilityFacts(profile.niche(), profile.location(),
+                        profile.audienceDescription(), profile.authorizedPlatforms(), java.util.Set.of()));
     }
     private IdentityProfileFacade.Profile active(UUID id) {
         var profile = identity.byAccount(id).orElseThrow(() -> new CampaignFailure(CampaignFailure.Code.ACCOUNT_NOT_ACTIVE));

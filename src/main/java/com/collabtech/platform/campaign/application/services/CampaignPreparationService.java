@@ -67,14 +67,7 @@ public final class CampaignPreparationService {
         return transactions.execute(() -> { actors.requireActiveCreator(accountId);
             return new GetPublishedCampaignsQueryHandler(catalog).handle(new GetPublishedCampaignsQuery(page)); });
     }
-    private CampaignViews.Summary summary(Campaign campaign) {
-        return new CampaignViews.Summary(campaign.id().value(), campaign.brandId().value(), catalog.brandName(campaign.id()), campaign.title(),
-                campaign.category(), campaign.location(), campaign.compensationTerms(), campaign.applicationDeadline(), campaign.status().name());
-    }
     private CampaignViews.Details details(Campaign campaign) {
-        return new CampaignViews.Details(summary(campaign), campaign.objective(), campaign.description(), campaign.targetAudience(),
-                campaign.requirements().stream().map(row -> new CampaignViews.Requirement(row.id().value(), row.description(), row.mandatory())).toList(),
-                campaign.deliverables().stream().map(row -> new CampaignViews.Deliverable(row.id().value(), row.contentType(), row.description(), row.quantity(), row.deadline())).toList(),
-                campaign.status() == CampaignStatus.OPEN && campaign.applicationDeadline().isAfter(clock.instant()), campaign.publicationDate());
+        return com.collabtech.platform.campaign.application.projections.CampaignViewMapper.details(campaign, catalog.brandName(campaign.id()), clock.instant());
     }
 }

@@ -31,6 +31,9 @@ public class CampaignPersistenceAdapter implements CampaignRepository, CampaignC
     public Optional<Campaign> findById(CampaignId id) {
         return Optional.ofNullable(em.find(CampaignJpaEntity.class, id.value().toString())).map(CampaignPersistenceMapper::toDomain);
     }
+    public Optional<Campaign> findByIdForUpdate(CampaignId id) {
+        return Optional.ofNullable(em.find(CampaignJpaEntity.class, id.value().toString(), LockModeType.PESSIMISTIC_WRITE)).map(CampaignPersistenceMapper::toDomain);
+    }
     @Transactional(readOnly=true)
     public String brandName(CampaignId id) { return em.find(CampaignJpaEntity.class, id.value().toString()).brandName; }
     @Transactional(readOnly=true)

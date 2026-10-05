@@ -6,5 +6,7 @@ public class CampaignRequirementJpaEntity {
     @ManyToOne(fetch=FetchType.LAZY, optional=false) @JoinColumn(name="campaign_id", nullable=false) CampaignJpaEntity campaign;
     @Column(nullable=false, length=2000) String description;
     @Column(nullable=false) boolean mandatory;
+    @Column(name="rule_type", nullable=false, length=32) String ruleType;
+    @Column(name="expected_value", length=150) String expectedValue;
     protected CampaignRequirementJpaEntity() {}
 }
