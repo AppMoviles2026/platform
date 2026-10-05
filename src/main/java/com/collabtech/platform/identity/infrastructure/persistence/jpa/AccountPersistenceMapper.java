@@ -11,14 +11,15 @@ import com.collabtech.platform.identity.domain.model.valueobjects.CreatorProfile
 import com.collabtech.platform.identity.domain.model.valueobjects.EmailAddress;
 import java.util.List;
 import java.util.UUID;
+import com.collabtech.platform.identity.domain.model.entities.SocialMediaAccount;
+import com.collabtech.platform.identity.domain.model.valueobjects.SocialMediaAccountId;
+import com.collabtech.platform.identity.domain.model.valueobjects.SocialPlatform;
+import com.collabtech.platform.identity.domain.model.valueobjects.SocialAccountStatus;
 
 final class AccountPersistenceMapper {
     private AccountPersistenceMapper() {}
 
     static AccountJpaEntity toEntity(Account account) {
-        if (account.creatorProfile() != null && !account.creatorProfile().socialMediaAccounts().isEmpty()) {
-            throw new UnsupportedOperationException("Social account persistence belongs to the future US-14 implementation");
-        }
         var entity = new AccountJpaEntity();
         entity.id = account.id().value().toString();
         entity.email = account.email().value();
@@ -46,6 +47,7 @@ final class AccountPersistenceMapper {
             row.niche = profile.niche();
             row.audienceDescription = profile.audienceDescription();
             row.location = profile.location();
+            copySocials(profile, row);
             entity.creatorProfile = row;
         }
         return entity;
@@ -58,8 +60,31 @@ final class AccountPersistenceMapper {
         CreatorProfile creator = row.creatorProfile == null ? null : new CreatorProfile(
                 new CreatorProfileId(UUID.fromString(row.creatorProfile.id)), row.creatorProfile.displayName,
                 row.creatorProfile.biography, row.creatorProfile.niche, row.creatorProfile.audienceDescription,
-                row.creatorProfile.location, List.of());
+                row.creatorProfile.location, row.creatorProfile.socials.stream().map(social -> new SocialMediaAccount(
+                        new SocialMediaAccountId(UUID.fromString(social.id)), new SocialPlatform(social.platform),
+                        social.externalAccountId, social.username, SocialAccountStatus.valueOf(social.status))).toList());
         return new Account(new AccountId(UUID.fromString(row.id)), new EmailAddress(row.email), row.passwordHash,
                 AccountType.valueOf(row.accountType), AccountStatus.valueOf(row.status), row.createdAt, brand, creator);
+    }
+
+    static void update(Account account, AccountJpaEntity entity) {
+        entity.passwordHash = account.passwordHash();
+        if (account.creatorProfile() != null) {
+            var profile = account.creatorProfile();
+            var row = entity.creatorProfile;
+            row.displayName = profile.displayName(); row.biography = profile.biography(); row.niche = profile.niche();
+            row.audienceDescription = profile.audienceDescription(); row.location = profile.location();
+            copySocials(profile, row);
+        }
+    }
+
+    private static void copySocials(CreatorProfile profile, CreatorProfileJpaEntity row) {
+        for (var social : profile.socialMediaAccounts()) {
+            if (row.socials.stream().anyMatch(existing -> existing.id.equals(social.id().value().toString()))) continue;
+            var linked = new SocialAccountJpaEntity();
+            linked.id = social.id().value().toString(); linked.profile = row; linked.platform = social.platform().code();
+            linked.externalAccountId = social.externalAccountId(); linked.username = social.username();
+            linked.status = social.status().name(); row.socials.add(linked);
+        }
     }
 }

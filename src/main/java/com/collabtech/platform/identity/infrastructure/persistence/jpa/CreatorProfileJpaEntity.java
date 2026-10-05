@@ -7,6 +7,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.CascadeType;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "identity_creator_profile")
@@ -26,6 +30,8 @@ public class CreatorProfileJpaEntity {
     String audienceDescription;
     @Column(length = 150)
     String location;
+    @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL)
+    List<SocialAccountJpaEntity> socials = new ArrayList<>();
 
     protected CreatorProfileJpaEntity() {}
 }

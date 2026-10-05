@@ -8,6 +8,7 @@ import com.collabtech.platform.identity.application.commands.UpdateCreatorProfil
 import com.collabtech.platform.identity.application.commands.StartSocialAuthorizationCommand;
 import com.collabtech.platform.identity.application.commands.CompleteSocialAuthorizationCommand;
 import com.collabtech.platform.identity.application.projections.IdentityViews;
+import com.collabtech.platform.identity.application.commands.ResetPasswordCommand;
 
 /** Inbound use-case port only. Future handlers implement this contract. */
 public interface IdentityCommandService {
@@ -15,6 +16,7 @@ public interface IdentityCommandService {
     IdentityViews.AccountView handle(RegisterCreatorCommand command);
     IdentityViews.SessionView handle(AuthenticateAccountCommand command);
     Void handle(RecoverAccountCommand command);
+    Void handle(ResetPasswordCommand command);
     IdentityViews.CreatorProfileView handle(UpdateCreatorProfileCommand command);
     IdentityViews.AuthorizationView handle(StartSocialAuthorizationCommand command);
     IdentityViews.SocialAccountView handle(CompleteSocialAuthorizationCommand command);

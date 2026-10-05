@@ -49,7 +49,8 @@ class RegistrationApiTests {
     @LocalServerPort int port;
     private static final String PASSWORD = "MiClaveDePrueba123!";
 
-    @BeforeEach void setup() { mvc = MockMvcBuilders.webAppContextSetup(context).build(); }
+    @BeforeEach void setup() { mvc = MockMvcBuilders.webAppContextSetup(context)
+            .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity()).build(); }
 
     @ParameterizedTest
     @CsvSource({"brands,BRAND,identity_brand_profile,business_name", "creators,CREATOR,identity_creator_profile,display_name"})

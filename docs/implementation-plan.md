@@ -4,7 +4,7 @@
 
 Actualización de alcance: 05/10/2026. Las posiciones 1 a 8 corresponden a landing y no se implementan en este backend. Se retiró la implementación informativa de US-01/US-02. US-09 y US-10 se implementan como registro de empresa y creador en Identity.
 
-La base inicial creó contratos y modelos Java. Ahora existen factories de registro del agregado Account, dos command handlers, hashing de contraseñas, adapters JPA y migración Flyway de cuentas/perfiles. MySQL se ejecuta en Docker. [Contrato de registro](registration-api.md) documenta los endpoints y las pruebas. Inicio de sesión, recuperación, OAuth y campañas permanecen planificados; no se generan tokens de sesión al registrar.
+La base inicial creó contratos y modelos Java. US-09/10 tienen registro persistido; US-11/13/14 tienen acceso, recuperación, consulta/edición del perfil y asociación OAuth en Identity. MySQL y Mailpit se ejecutan en Docker. Ver [registro](registration-api.md) y [contratos/configuración de US-11/13/14](identity-access-profile-social-api.md). OAuth real necesita credenciales y permisos del proveedor, todavía no verificados; Campaign permanece planificado. No se generan sesiones al registrar.
 
 Fuentes locales de la base, contrastadas nuevamente con el reporte el 05/10/2026:
 
@@ -22,15 +22,13 @@ Las posiciones 1–8 (US-01 a US-08) quedan excluidas del backend. La tabla sigu
 | Posición | Historia | Pantallas / rutas actuales | Alcance del backend |
 |---:|---|---|---|
 | 9 | US-17 Búsqueda de campañas | CampaignSearchScreen / CAMPAIGN_SEARCH | Campaign: búsqueda paginada por texto/categoría y respuesta vacía. |
-| 10 | US-18 Condiciones de campaña | CampaignDetailScreen / CAMPAIGN_DETAIL | Campaign: detalle completo abierto/cerrado. |
 | 11 | US-19 Postulación | ApplicationFormScreen, MyApplicationsScreen | Campaign: presentar, consultar propias, editar/cancelar pendiente. |
 | 12 | US-10 Registro creador | RegisterScreen(brand=false) / REGISTER_CREATOR | Implementada: POST /api/v1/auth/creators crea Account + CreatorProfile inicial. |
-| 13 | US-11 Acceso/recuperación | LoginScreen, RecoverScreen | Identity: autenticación, rol servidor, recuperación. |
-| 14 | US-13 Perfil creador | ProfileScreen(brand=false) / CREATOR_PROFILE | Identity: lectura/actualización propia. |
-| 15 | US-14 Redes sociales | SocialAccountsScreen / SOCIAL_ACCOUNTS | Identity: inicio/callback OAuth, lectura de cuentas autorizadas. |
+| 13 | US-11 Acceso/recuperación | LoginScreen, RecoverScreen | Implementada: autenticación Bearer, rol servidor, correo y reset de un solo uso. |
+| 14 | US-13 Perfil creador | ProfileScreen(brand=false) / CREATOR_PROFILE | Implementada: lectura/actualización propia persistida y protegida. |
+| 15 | US-14 Redes sociales | SocialAccountsScreen / SOCIAL_ACCOUNTS | Implementados inicio/callback OAuth y listado persistido; autorización real pendiente de credenciales/permisos. |
 | 16 | US-15 Creación campaña | CampaignFormScreen / CAMPAIGN_FORM | Campaign: borrador y publicación solo tras condiciones completas. |
 | 17 | US-16 Condiciones campaña | CampaignTermsScreen / CAMPAIGN_TERMS | Campaign: requisitos, entregables, plazos y compensación. |
-| 18 | US-09 Registro empresa | RegisterScreen(brand=true) / REGISTER_BRAND | Implementada: POST /api/v1/auth/brands crea Account + BrandProfile inicial. |
 
 **US-05:** sus escenarios exigen registrar y confirmar una consulta; un botón que cambia estado local no cumple ese requisito. Se considera parte de la landing excluida por el alcance indicado y no se inventa un contexto de soporte dentro de Identity o Shared. En el trabajo de landing debe acordarse un servicio externo de contacto o documentar un contexto de soporte si se quiere que CollabPro almacene estas solicitudes. Se conserva su posición 5, sin reemplazarla.
 
@@ -48,7 +46,7 @@ La asignación se basa en 2.5.1.3 (canvases), 2.5.2 (Context Map) y 2.6 (modelo 
 
 | Contexto | Responsabilidad y modelo propios | Lo que no le corresponde | Uso en las primeras 18 posiciones |
 |---|---|---|---|
-| Identity & Profile Management (`identity`) | Registro, acceso, recuperación, perfiles y asociación social autorizada. Aggregate Root: Account; perfiles y SocialMediaAccount dentro de su límite. | Contenido de landing, crear campañas, decidir elegibilidad de una postulación, ejecutar colaboraciones, procesar pagos u obtener reportes de métricas. | US-09 y US-10 implementadas; US-11, US-13 y US-14 pendientes. |
+| Identity & Profile Management (`identity`) | Registro, acceso, recuperación, perfiles y asociación social autorizada. Aggregate Root: Account; perfiles y SocialMediaAccount dentro de su límite. | Contenido de landing, crear campañas, decidir elegibilidad de una postulación, ejecutar colaboraciones, procesar pagos u obtener reportes de métricas. | US-09/10/11/13 implementadas y flujo backend US-14; validar OAuth con proveedores reales. |
 | Campaign Management (`campaign`) | Oportunidades antes del acuerdo: Campaign, requisitos, especificaciones, CompensationTerms y Application como agregado independiente. | Entregables realizados, acuerdo bilateral, validación de evidencias, cobro o métricas de resultados. | US-15, US-16, US-17, US-18, US-19. |
 | Collaboration Management (`collaboration`) | Acuerdo aceptado y ejecución: Collaboration, snapshot de condiciones, entregables reales, revisión e incidencias. | Búsqueda de oportunidades y postulaciones pendientes; procesamiento financiero o APIs de métricas. | Ningún caso de uso transaccional del corte. Se conserva la estructura, sin handlers nuevos. |
 | Billing & Compensation Management (`billing`) | Métodos de pago, suscripciones, compensaciones autorizadas y transacciones. | La oferta de compensación de una campaña o explicar al visitante cómo funciona un pago. | Ninguno. CompensationTerms de US-16/18 sigue siendo de Campaign. |
@@ -63,7 +61,7 @@ US-09 y US-10 sí pertenecen a Identity por crear una identidad persistida. Acco
 
 Decisiones técnicas: IDs UUID, correo normalizado en minúsculas, nombres de 1 a 150 caracteres y contraseña de 8 a 128 caracteres sin recortarla. La longitud de contraseña es una política propuesta, no un requisito explícito del reporte; la app actual acepta 6 y deberá alinearse al integrar. Se crea una cuenta ACTIVE porque estas historias no definen verificación de correo. Cambiar esa política a PENDING requiere definir el flujo de activación. La respuesta no concede acceso autenticado.
 
-La transacción del adapter persiste Account y perfil juntos y traduce la restricción UNIQUE del correo a un conflicto de negocio incluso bajo concurrencia. El adapter save actual implementa inserción de registro; deberá ampliarse para actualización/versionado de agregados al abordar US-11/13/14. No persiste redes sociales todavía y rechaza intentos de guardar asociaciones antes de implementar ese adapter, evitando descartarlas silenciosamente.
+La transacción del adapter persiste Account y perfil juntos y traduce UNIQUE de correo/vínculo social a conflictos de negocio. save inserta o actualiza el agregado con versionado optimista, incluidos perfil y asociaciones. Tokens y credenciales pertenecen exclusivamente a adapters de Infrastructure; Domain/Application no dependen de Spring, JPA, SMTP ni HTTP.
 
 - **Domain:** agregados, entidades, value objects, eventos, políticas y repositorios abstractos. Java puro, sin Spring/JPA, HTTP o dependencias a capas externas.
 - **Application:** commands/queries y servicios de entrada; puertos de salida para seguridad, OAuth y lecturas. Los futuros handlers coordinan transacciones, autorizaciones, dominio y puertos.
@@ -126,24 +124,24 @@ CampaignRequirement se conserva como **entidad** por tener requirementId y una f
 
 Account implementa factories de registro e invariantes de perfil/tipo, correo y hash requerido. Los agregados de Campaign aún son estructurales; faltan transiciones como publish, defineConditions, submit/update/cancel. No usar setters genéricos que permitan saltar las transiciones.
 
-## Contratos REST: registro implementado y casos futuros
+## Contratos REST: Identity implementado y Campaign futuro
 
-POST /auth/brands y POST /auth/creators están implementados. Los demás endpoints de esta tabla siguen siendo propuestas. Ver ejemplos y errores del registro en [registration-api.md](registration-api.md).
+Las rutas de Identity de esta tabla están implementadas. Las rutas de Campaign/Application siguen siendo propuestas. Ver [registro](registration-api.md) y [acceso/perfil/OAuth](identity-access-profile-social-api.md). El callback OAuth devuelve JSON; la integración de retorno a la app sigue pendiente.
 
 Prefijo `/api/v1`. UUID como string, fechas ISO-8601 y tiempos UTC con zona; convertir desde dd/mm/aaaa y formatear en el cliente. Nombres de propiedades y estados en inglés, traducidos en Compose. Paginación desde cero; límite 1–100. Ningún ID de actor o rol enviado por la app será autoridad: derivarlo del token autenticado y su perfil.
 
-| Endpoint futuro | Caso / respuesta | Pantalla |
+| Endpoint | Caso / respuesta | Pantalla |
 |---|---|---|
 | POST /auth/brands | businessName, email, password → 201 AccountView | Registro empresa US-09 |
 | POST /auth/creators | displayName, email, password → 201 AccountView | Registro creador US-10 |
 | POST /auth/sessions | email, password → SessionView(accessToken, tokenType, expiresAt, account) | Login US-11 |
 | POST /auth/recovery-requests | email → 202 respuesta genérica | Recover US-11 |
-| POST /auth/password-resets | token, newPassword → 204; completar mecanismo de recuperación | Enlace/pantalla reset a añadir como cierre técnico de US-11 |
+| POST /auth/password-resets | token, newPassword → 204; revoca sesiones previas | Enlace/pantalla reset a añadir al cliente |
 | GET /accounts/me | accountId, profileId, name, accountType, status | Encabezado Home; rol decidido por servidor |
 | GET /profiles/me/creator | perfil propio | ProfileScreen creador US-13 |
 | PUT /profiles/me/creator | displayName, biography, niche, audienceDescription, location → perfil | Guardar perfil US-13 |
 | POST /social-accounts/{platform}/authorizations | authorizationUrl (estado guardado servidor) | Inicio OAuth US-14 |
-| GET /social-accounts/{platform}/callback | validar state/código/error y vincular solo con consentimiento válido | Browser OAuth → app mediante app link |
+| GET /social-accounts/{platform}/callback | validar state/código/error y vincular solo con consentimiento válido; devuelve JSON | Browser OAuth; app link de retorno pendiente |
 | GET /social-accounts/me | lista de platform, username, status; no tokens | SocialAccountsScreen US-14 |
 | GET /campaigns?q=&category=&page=&size= | PageResult<Summary>; items=[] si sin coincidencias | Búsqueda US-17 |
 | GET /campaigns/{id} | Details con condiciones y acceptsApplications | Detalle US-18 |
@@ -171,17 +169,19 @@ Se retiró toda la implementación exclusiva de US-01/US-02 y su documento de AP
 
 Crear entidades JPA/mappers en Infrastructure sin anotar el dominio. Versionar esquema con migraciones; fijar índices y restricciones anteriores. Añadir optimistic locking al modelo persistido y transacciones en handlers. Crear datos de desarrollo controlados con campañas abiertas/cerradas, nunca simular que son productivos. Configurar perfil local MySQL separado del perfil skeleton; no usar ddl-auto=create/update en entornos compartidos.
 
-Completado para registro: tres entidades JPA de Identity, mapper, adapter transaccional, migración V1, columna de versión, perfil local MySQL y Compose con volumen persistente. El dominio sigue sin anotaciones JPA. Persistencia de Campaign/redes sociales permanece pendiente. Local es ahora el perfil por defecto; skeleton es opcional y no expone registros al no tener DB.
+Completado para Identity: entidades JPA, mapper, adapter transaccional, migraciones V1/V2 y versión de Account; sesiones/recuperación/state/credenciales por JDBC transaccional. Local usa MySQL Docker y Mailpit; skeleton sigue opcional. Persistencia de Campaign permanece pendiente. El dominio no tiene anotaciones JPA.
 
 ### 2. Identity: US-10, US-11 y US-09
 
 Implementar RegisterCreatorCommandHandler y RegisterBrandCommandHandler para crear Account/perfil inicial y rechazar correos duplicados (también en condición de carrera por índice UNIQUE). Añadir PasswordHasher y AccessTokenProvider concretos con configuración externa. Account activo recibe acceso; cuentas no activas o contraseña incorrecta reciben denegación. El rol del token dirige Home; retirar selector de rol ficticio de Login.
 
-Estado: RegisterCreatorCommandHandler, RegisterBrandCommandHandler y PasswordHasher están implementados para US-10/09. AccessTokenProvider, autenticación y recuperación de US-11 no lo están. Crear Account ACTIVE no genera sesión ni permite que el frontend trate el resultado de registro como login.
+Estado: registro y US-11 implementados. AccessTokenProvider emite sesiones Bearer opacas con expiración de una hora y hash persistido; Spring Security comprueba identidad/estado. Recovery usa token de un solo uso de 30 minutos, outbox cifrado y SMTP asíncrono con cinco intentos; reset cambia contraseña y revoca sesiones. Entrega local verificada con Mailpit. Crear Account ACTIVE sigue sin generar sesión. Falta integrar login/reset en el frontend.
 
 Implementar RecoverAccountCommandHandler con token aleatorio de un solo uso, hash persistido, expiración y correo mediante adapter. La respuesta pública no debe revelar si existe un correo. Agregar confirmación de cambio de contraseña y pantalla/app-link de recuperación: el prototipo actualmente solo pide correo. Esta extensión cierra el flujo de US-11, no introduce una fila nueva.
 
 ### 3. Perfil y OAuth: US-13/US-14
+
+Estado: US-13 implementada, con lectura/actualización propia y audiencia persistida. US-14 tiene adapter OAuth Instagram/TikTok, state de diez minutos, uso único y proveedor/propietario vinculados, scope/identidad comprobados, asociaciones persistidas y credenciales cifradas. Pruebas con fixtures/stub explícitos; autorización real pendiente de configuración y validación del proveedor. No se añadieron métricas ni US-12. Los párrafos siguientes conservan las reglas de integración previstas para el cliente.
 
 Implementar lectura y actualización del perfil creador propietario activo, campos modificables y validación. Persistir también audiencia: actualmente usa LocalEntry y cambios locales, lo que debe convertirse en estado editable real.
 
@@ -222,8 +222,8 @@ No se modifican ahora las pantallas de E:/CollabPro. Añadir posteriormente Retr
 
 Pruebas de dominio para todos los escenarios de la sección 2.4.1 seleccionados; integración con MySQL para UNIQUE/FK/races y rollback; pruebas HTTP de autorización/propiedad/estados y JSON esperado; contrato de cliente para listado vacío, campaña cerrada, duplicados y errores por campo. OAuth con proveedor sandbox o stub explícito de prueba, nunca presentado como autorización real. Recovery con entrega verificable en ambiente de prueba. Pruebas E2E: registrar empresa y creador → publicar campaña completa → buscar/detalle → postular/editar/cancelar.
 
-La base requiere compilación y comprobación de límites de dependencias. US-09/US-10 tienen pruebas de dominio/handlers/hashing y pruebas HTTP/JPA de registro válido, duplicado normalizado en ambos roles, validación, ausencia de secretos, concurrencia y rollback. Se verifica la eliminación de rutas de landing. La integración visual de la app permanece pendiente.
+La base requiere compilación y comprobación de límites de dependencias. US-09/10 conservan pruebas de dominio/handlers/hashing y HTTP/JPA de registro, duplicados, concurrencia y rollback. US-11/13/14 agregan pruebas de seguridad HTTP, recuperación/invalidación, aislamiento del perfil, OAuth aprobado/rechazado/duplicado/estado inválido, fixtures HTTP del adapter y cifrado. La suite Docker incluye entrega SMTP a Mailpit. Se verifica la eliminación de rutas de landing. La integración visual y OAuth contra proveedores reales permanecen pendientes.
 
 ## Entregables del siguiente paso
 
-La retirada de US-01/US-02 y el registro de US-09/US-10 están completados. Para las fases posteriores se planifican los demás handlers, seguridad de sesiones/recuperación, OAuth, persistencia y reglas de Campaign y OpenAPI. La conexión del cliente sigue siendo posterior y solo para las historias del corte; esas fases no se implementaron en esta tarea.
+La retirada de US-01/02, registro US-09/10 y backend de US-11/13/14 están implementados dentro de Identity. Restan configurar/validar OAuth real, integrar el cliente, Campaign y OpenAPI. No se implementaron esas fases ni historias fuera del corte en esta tarea.

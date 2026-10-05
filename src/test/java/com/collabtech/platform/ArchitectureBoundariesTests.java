@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 /** Enforces direct source-import boundaries of the inner layers during this modular bootstrap. */
 class ArchitectureBoundariesTests {
     private static final String ROOT = "com.collabtech.platform.";
-    private static final Pattern IMPORT = Pattern.compile("(?m)^import\\s+(?:static\\s+)?([\\w.]+);");
+    private static final Pattern IMPORT = Pattern.compile("(?m)^import\\s+(?:static\\s+)?([\\w.*]+);");
 
     @Test
     void containsOnlyReportedContextsAndSharedWithFourLayers() throws IOException {

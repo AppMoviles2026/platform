@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $repoPath = Split-Path -Parent $PSScriptRoot
 $previousLocation = Get-Location
-$names = @('SPRING_DATASOURCE_URL', 'SPRING_DATASOURCE_USERNAME', 'SPRING_DATASOURCE_PASSWORD', 'MAVEN_USER_HOME')
+$names = @('SPRING_DATASOURCE_URL', 'SPRING_DATASOURCE_USERNAME', 'SPRING_DATASOURCE_PASSWORD', 'MAVEN_USER_HOME', 'COLLABPRO_TEST_MAILPIT')
 $previousValues = @{}
 foreach ($name in $names) { $previousValues[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 try {
@@ -14,9 +14,10 @@ try {
     $env:SPRING_DATASOURCE_URL = "jdbc:mysql://localhost:${mysqlPort}/collabpro_test?connectionTimeZone=UTC"
     $env:SPRING_DATASOURCE_USERNAME = 'collabpro'
     $env:SPRING_DATASOURCE_PASSWORD = if ($env:MYSQL_PASSWORD) { $env:MYSQL_PASSWORD } else { 'collabpro-local-only' }
+    $env:COLLABPRO_TEST_MAILPIT = 'true'
     $env:MAVEN_USER_HOME = Join-Path ([System.IO.Path]::GetTempPath()) 'collabpro-scaffold-maven-cache'
     & .\mvnw.cmd -B clean test
-    if ($LASTEXITCODE -ne 0) { throw 'MySQL registration tests failed' }
+    if ($LASTEXITCODE -ne 0) { throw 'MySQL Identity / SMTP tests failed' }
 } finally {
     foreach ($name in $names) { [Environment]::SetEnvironmentVariable($name, $previousValues[$name], 'Process') }
     Set-Location -LiteralPath $previousLocation.Path

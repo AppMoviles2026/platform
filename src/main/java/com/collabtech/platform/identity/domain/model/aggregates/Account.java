@@ -17,7 +17,7 @@ import com.collabtech.platform.identity.domain.model.valueobjects.CreatorProfile
 /** Account aggregate; registration owns exactly one initial profile. */
 public final class Account extends AggregateRoot<AccountId> {
     private final EmailAddress email;
-    private final String passwordHash;
+    private String passwordHash;
     private final AccountType accountType;
     private final AccountStatus status;
     private final Instant createdAt;
@@ -69,4 +69,26 @@ public final class Account extends AggregateRoot<AccountId> {
     public Instant createdAt() { return createdAt; }
     public BrandProfile brandProfile() { return brandProfile; }
     public CreatorProfile creatorProfile() { return creatorProfile; }
+
+    public void changePassword(String encodedPassword) {
+        if (status != AccountStatus.ACTIVE) throw new IllegalStateException("Account must be active");
+        if (encodedPassword == null || encodedPassword.isBlank()) throw new IllegalArgumentException("Password hash is required");
+        passwordHash = encodedPassword;
+    }
+
+    public void updateCreatorProfile(String name, String biography, String niche, String audience, String location) {
+        requireActiveCreator();
+        creatorProfile.updateInformation(name, biography, niche, audience, location);
+    }
+
+    public void linkSocialAccount(com.collabtech.platform.identity.domain.model.entities.SocialMediaAccount social) {
+        requireActiveCreator();
+        creatorProfile.linkSocialMediaAccount(social);
+    }
+
+    private void requireActiveCreator() {
+        if (status != AccountStatus.ACTIVE || accountType != AccountType.CREATOR) {
+            throw new IllegalStateException("An active creator account is required");
+        }
+    }
 }

@@ -6,6 +6,8 @@ import com.collabtech.platform.identity.domain.model.valueobjects.AccountId;
 import com.collabtech.platform.identity.domain.model.valueobjects.EmailAddress;
 import com.collabtech.platform.identity.domain.repositories.AccountRepository;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import com.collabtech.platform.identity.domain.exceptions.DuplicateSocialAccountException;
 import java.util.Locale;
 import java.util.Optional;
 import org.springframework.context.annotation.Profile;
@@ -19,12 +21,17 @@ public class AccountPersistenceAdapter implements AccountRepository {
 
     public AccountPersistenceAdapter(EntityManager entityManager) { this.entityManager = entityManager; }
 
-    /** Registration insert. Account + profile commit atomically before returning to the handler. */
+    /** Inserts or updates Account and its owned entities atomically. */
     @Override
     @Transactional
     public Account save(Account account) {
         try {
-            entityManager.persist(AccountPersistenceMapper.toEntity(account));
+            var existing = entityManager.find(AccountJpaEntity.class, account.id().value().toString());
+            if (existing == null) entityManager.persist(AccountPersistenceMapper.toEntity(account));
+            else {
+                AccountPersistenceMapper.update(account, existing);
+                entityManager.lock(existing, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+            }
             entityManager.flush();
             return account;
         } catch (RuntimeException failure) {
@@ -33,6 +40,11 @@ public class AccountPersistenceAdapter implements AccountRepository {
                         && constraint.getConstraintName() != null
                         && constraint.getConstraintName().toLowerCase(Locale.ROOT).contains("uk_account_email")) {
                     throw new DuplicateEmailException();
+                }
+                if (cause instanceof org.hibernate.exception.ConstraintViolationException constraint
+                        && constraint.getConstraintName() != null
+                        && constraint.getConstraintName().toLowerCase(Locale.ROOT).contains("uk_profile_social")) {
+                    throw new DuplicateSocialAccountException();
                 }
             }
             throw failure;
@@ -51,6 +63,14 @@ public class AccountPersistenceAdapter implements AccountRepository {
     public Optional<Account> findByEmail(EmailAddress email) {
         return entityManager.createQuery("select a from AccountJpaEntity a where a.email = :email", AccountJpaEntity.class)
                 .setParameter("email", email.value()).getResultStream().findFirst().map(AccountPersistenceMapper::toDomain);
+    }
+
+    @Override
+    @Transactional
+    public Optional<Account> findByEmailForUpdate(EmailAddress email) {
+        return entityManager.createQuery("select a from AccountJpaEntity a where a.email = :email", AccountJpaEntity.class)
+                .setParameter("email", email.value()).setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                .getResultStream().findFirst().map(AccountPersistenceMapper::toDomain);
     }
 
     @Override
