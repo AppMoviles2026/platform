@@ -1,12 +1,15 @@
 package com.collabtech.platform;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
@@ -14,6 +17,24 @@ import org.junit.jupiter.api.Test;
 class ArchitectureBoundariesTests {
     private static final String ROOT = "com.collabtech.platform.";
     private static final Pattern IMPORT = Pattern.compile("(?m)^import\\s+(?:static\\s+)?([\\w.]+);");
+
+    @Test
+    void containsOnlyReportedContextsAndSharedWithFourLayers() throws IOException {
+        Path source = Path.of("src/main/java/com/collabtech/platform");
+        Set<String> expectedContexts = Set.of("identity", "campaign", "collaboration", "billing", "performance", "shared");
+        try (var paths = Files.list(source)) {
+            var actual = paths.filter(Files::isDirectory)
+                    .map(path -> path.getFileName().toString()).collect(Collectors.toSet());
+            assertEquals(expectedContexts, actual);
+        }
+        for (String context : expectedContexts) {
+            try (var paths = Files.list(source.resolve(context))) {
+                var layers = paths.filter(Files::isDirectory)
+                        .map(path -> path.getFileName().toString()).collect(Collectors.toSet());
+                assertEquals(Set.of("domain", "application", "infrastructure", "interfaces"), layers, context);
+            }
+        }
+    }
 
     @Test
     void innerLayersDependOnlyOnTheirOwnContextAndSharedKernel() throws IOException {
