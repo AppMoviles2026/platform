@@ -16,7 +16,10 @@ public final class CreatorProfile extends Entity<CreatorProfileId> {
 
     public CreatorProfile(CreatorProfileId id, String displayName, String biography, String niche, String audienceDescription, String location, List<SocialMediaAccount> socialMediaAccounts) {
         super(id);
-        this.displayName = displayName;
+        if (displayName == null || displayName.isBlank() || displayName.strip().length() > 150) {
+            throw new IllegalArgumentException("Display name must contain 1 to 150 characters");
+        }
+        this.displayName = displayName.strip();
         this.biography = biography;
         this.niche = niche;
         this.audienceDescription = audienceDescription;

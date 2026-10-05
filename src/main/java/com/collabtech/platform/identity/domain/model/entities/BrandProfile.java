@@ -12,7 +12,10 @@ public final class BrandProfile extends Entity<BrandProfileId> {
 
     public BrandProfile(BrandProfileId id, String businessName, String description, String category, String location) {
         super(id);
-        this.businessName = businessName;
+        if (businessName == null || businessName.isBlank() || businessName.strip().length() > 150) {
+            throw new IllegalArgumentException("Business name must contain 1 to 150 characters");
+        }
+        this.businessName = businessName.strip();
         this.description = description;
         this.category = category;
         this.location = location;

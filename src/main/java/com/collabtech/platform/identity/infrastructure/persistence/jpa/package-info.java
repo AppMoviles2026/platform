@@ -1,4 +1,4 @@
 /**
- * Implementation location reserved by the implementation plan; no runtime component is registered.
+ * Registration persistence: isolated JPA entities, aggregate mapper and transactional AccountRepository adapter.
  */
 package com.collabtech.platform.identity.infrastructure.persistence.jpa;

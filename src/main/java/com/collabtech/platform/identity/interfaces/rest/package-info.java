@@ -1,4 +1,4 @@
 /**
- * Implementation location reserved by the implementation plan; no runtime component is registered.
+ * Registration endpoints for US-09/US-10, request validation, resources and safe HTTP error translation.
  */
 package com.collabtech.platform.identity.interfaces.rest;

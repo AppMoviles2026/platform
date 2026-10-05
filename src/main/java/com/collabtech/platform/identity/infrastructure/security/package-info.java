@@ -1,4 +1,4 @@
 /**
- * Implementation location reserved by the implementation plan; no runtime component is registered.
+ * PasswordHasher implementation for registration; session security remains pending under US-11.
  */
 package com.collabtech.platform.identity.infrastructure.security;

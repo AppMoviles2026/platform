@@ -2,9 +2,9 @@
 
 ## Estado y fuentes
 
-Revisión de límites DDD e implementación de US-01/US-02: 05/10/2026. La revisión inicial fue documental; después de la autorización se completó el refactor y la implementación descritos en la fase 0.
+Actualización de alcance: 05/10/2026. Las posiciones 1 a 8 corresponden a landing y no se implementan en este backend. Se retiró la implementación informativa de US-01/US-02. US-09 y US-10 se implementan como registro de empresa y creador en Identity.
 
-La base inicial creó contratos y modelos Java. US-01 y US-02 cuentan con consultas públicas dentro de Identity, en Application/Infrastructure/Interfaces, sin alterar su dominio Account. El módulo adicional de contenido fue retirado y se conservaron ambos contratos HTTP. [API y cobertura actuales](public-presentations-api.md) documenta la implementación vigente y sus pruebas. Los demás casos de uso siguen planificados: no hay repositorios JPA, migraciones, tokens reales ni integraciones de proveedores.
+La base inicial creó contratos y modelos Java. Ahora existen factories de registro del agregado Account, dos command handlers, hashing de contraseñas, adapters JPA y migración Flyway de cuentas/perfiles. MySQL se ejecuta en Docker. [Contrato de registro](registration-api.md) documenta los endpoints y las pruebas. Inicio de sesión, recuperación, OAuth y campañas permanecen planificados; no se generan tokens de sesión al registrar.
 
 Fuentes locales de la base, contrastadas nuevamente con el reporte el 05/10/2026:
 
@@ -17,26 +17,20 @@ Fuentes locales de la base, contrastadas nuevamente con el reporte el 05/10/2026
 
 Se toman las **posiciones 1 a 18**, no el intervalo numérico US-01 a US-18. No se sustituye una historia de landing por una fila posterior.
 
+Las posiciones 1–8 (US-01 a US-08) quedan excluidas del backend. La tabla siguiente conserva las posiciones originales de las historias que sí necesitan backend; no renumera ni reemplaza las excluidas.
+
 | Posición | Historia | Pantallas / rutas actuales | Alcance del backend |
 |---:|---|---|---|
-| 1 | US-01 Presentación para empresas | WelcomeScreen, AboutScreen / ABOUT_BRAND | GET /api/v1/public/presentations/brands implementado en Identity como lectura de onboarding, sin nuevo agregado. Cliente por integrar. |
-| 2 | US-02 Presentación para creadores | WelcomeScreen, AboutScreen / ABOUT_CREATOR | GET /api/v1/public/presentations/creators implementado junto a US-01 dentro de Identity. Cliente por integrar. |
-| 3 | US-03 Funcionamiento para empresas | HowScreen / HOW_BRAND | Contenido local/landing. |
-| 4 | US-04 Funcionamiento para creadores | HowScreen / HOW_CREATOR | Contenido local/landing. |
-| 5 | US-05 Contacto | ContactScreen / CONTACT | Excluida como historia de landing en este entregable. Su envío real sí requiere un servicio de recepción; ver nota debajo. |
-| 6 | US-06 Idioma | WelcomeScreen, AboutScreen, HowScreen / language | Presentación y conservación del idioma en cliente. |
-| 7 | US-07 Compatibilidad visual | Landing y presentación móvil | UI adaptable; no caso de uso backend. |
-| 8 | US-08 Acceso a registro | RolePickerScreen / ROLE_PICK | Navegación a formularios. Registro real se cubre por US-09/US-10. |
 | 9 | US-17 Búsqueda de campañas | CampaignSearchScreen / CAMPAIGN_SEARCH | Campaign: búsqueda paginada por texto/categoría y respuesta vacía. |
 | 10 | US-18 Condiciones de campaña | CampaignDetailScreen / CAMPAIGN_DETAIL | Campaign: detalle completo abierto/cerrado. |
 | 11 | US-19 Postulación | ApplicationFormScreen, MyApplicationsScreen | Campaign: presentar, consultar propias, editar/cancelar pendiente. |
-| 12 | US-10 Registro creador | RegisterScreen(brand=false) / REGISTER_CREATOR | Identity: Account + CreatorProfile inicial. |
+| 12 | US-10 Registro creador | RegisterScreen(brand=false) / REGISTER_CREATOR | Implementada: POST /api/v1/auth/creators crea Account + CreatorProfile inicial. |
 | 13 | US-11 Acceso/recuperación | LoginScreen, RecoverScreen | Identity: autenticación, rol servidor, recuperación. |
 | 14 | US-13 Perfil creador | ProfileScreen(brand=false) / CREATOR_PROFILE | Identity: lectura/actualización propia. |
 | 15 | US-14 Redes sociales | SocialAccountsScreen / SOCIAL_ACCOUNTS | Identity: inicio/callback OAuth, lectura de cuentas autorizadas. |
 | 16 | US-15 Creación campaña | CampaignFormScreen / CAMPAIGN_FORM | Campaign: borrador y publicación solo tras condiciones completas. |
 | 17 | US-16 Condiciones campaña | CampaignTermsScreen / CAMPAIGN_TERMS | Campaign: requisitos, entregables, plazos y compensación. |
-| 18 | US-09 Registro empresa | RegisterScreen(brand=true) / REGISTER_BRAND | Identity: Account + BrandProfile inicial. |
+| 18 | US-09 Registro empresa | RegisterScreen(brand=true) / REGISTER_BRAND | Implementada: POST /api/v1/auth/brands crea Account + BrandProfile inicial. |
 
 **US-05:** sus escenarios exigen registrar y confirmar una consulta; un botón que cambia estado local no cumple ese requisito. Se considera parte de la landing excluida por el alcance indicado y no se inventa un contexto de soporte dentro de Identity o Shared. En el trabajo de landing debe acordarse un servicio externo de contacto o documentar un contexto de soporte si se quiere que CollabPro almacene estas solicitudes. Se conserva su posición 5, sin reemplazarla.
 
@@ -54,29 +48,22 @@ La asignación se basa en 2.5.1.3 (canvases), 2.5.2 (Context Map) y 2.6 (modelo 
 
 | Contexto | Responsabilidad y modelo propios | Lo que no le corresponde | Uso en las primeras 18 posiciones |
 |---|---|---|---|
-| Identity & Profile Management (`identity`) | Registro, acceso, recuperación, perfiles y asociación social autorizada. Aggregate Root: Account; perfiles y SocialMediaAccount dentro de su límite. | Crear campañas, decidir elegibilidad de una postulación, ejecutar colaboraciones, procesar pagos u obtener reportes de métricas. | US-09, US-10, US-11, US-13, US-14. Extensión técnica propuesta de lectura para US-01/02, explicada debajo. |
+| Identity & Profile Management (`identity`) | Registro, acceso, recuperación, perfiles y asociación social autorizada. Aggregate Root: Account; perfiles y SocialMediaAccount dentro de su límite. | Contenido de landing, crear campañas, decidir elegibilidad de una postulación, ejecutar colaboraciones, procesar pagos u obtener reportes de métricas. | US-09 y US-10 implementadas; US-11, US-13 y US-14 pendientes. |
 | Campaign Management (`campaign`) | Oportunidades antes del acuerdo: Campaign, requisitos, especificaciones, CompensationTerms y Application como agregado independiente. | Entregables realizados, acuerdo bilateral, validación de evidencias, cobro o métricas de resultados. | US-15, US-16, US-17, US-18, US-19. |
 | Collaboration Management (`collaboration`) | Acuerdo aceptado y ejecución: Collaboration, snapshot de condiciones, entregables reales, revisión e incidencias. | Búsqueda de oportunidades y postulaciones pendientes; procesamiento financiero o APIs de métricas. | Ningún caso de uso transaccional del corte. Se conserva la estructura, sin handlers nuevos. |
 | Billing & Compensation Management (`billing`) | Métodos de pago, suscripciones, compensaciones autorizadas y transacciones. | La oferta de compensación de una campaña o explicar al visitante cómo funciona un pago. | Ninguno. CompensationTerms de US-16/18 sigue siendo de Campaign. |
 | Performance & Attribution Management (`performance`) | Métricas con fuente y periodo, evidencias de desempeño y atribución. | Registro/autorización de una cuenta social o descripción de audiencia del perfil. | Ninguno. US-14 pertenece a Identity, aunque habilite futuras consultas de Performance. |
 | Shared (`shared`) | Primitivas técnicas, CQRS, eventos, paginación y errores reutilizables. | Account, Campaign, catálogos de negocio, textos comerciales o tablas comunes que mezclen contextos. | Soporte transversal, sin historia ni agregado propio. |
 
-### Decisión para US-01 y US-02: contenido informativo, no dominio transaccional
+### Decisión corregida para landing y registro
 
-Los escenarios de 2.4.1 describen visitantes que comprenden una propuesta e identifican beneficios. **El reporte no asigna la landing ni un catálogo editorial a ninguno de sus cinco contextos.** Mencionar campañas, entregables o pagos en un texto no invoca esos procesos ni hace que la historia pertenezca a todos ellos.
+Los escenarios de US-01 a US-08 son de landing. Se eliminan controllers, queries, proyecciones, puerto, catálogo, recursos y tests exclusivos de las presentaciones. Sus antiguas rutas GET responden 404. No se asignan a Identity ni Shared, y su contenido debe mantenerse en el proyecto de landing.
 
-Para mantener la API solicitada sin crear otro contexto, se alojan **ambas lecturas juntas en Identity como extensión técnica de presentación previa al registro (onboarding)**. Es la decisión técnica del plan revisado, ahora implementada, no una capability ya descrita en su canvas. No amplía el dominio Account ni convierte una presentación comercial en agregado, entidad persistida o command. Sustituye la asignación anterior «empresas a Campaign / creadores a Identity», que separaba una misma responsabilidad por audiencia sin respaldo en el modelo.
+US-09 y US-10 sí pertenecen a Identity por crear una identidad persistida. Account controla el tipo y posee exactamente un perfil correspondiente; registro no significa iniciar una sesión, editar el perfil completo ni crear campañas. Los handlers dependen de AccountRepository, PasswordHasher y Clock; Spring, transacciones, JPA y criptografía concreta se mantienen en Infrastructure. Los factories registran AccountRegistered como evento interno del agregado, sin publicar integraciones externas en este entregable.
 
-Ubicación implementada:
+Decisiones técnicas: IDs UUID, correo normalizado en minúsculas, nombres de 1 a 150 caracteres y contraseña de 8 a 128 caracteres sin recortarla. La longitud de contraseña es una política propuesta, no un requisito explícito del reporte; la app actual acepta 6 y deberá alinearse al integrar. Se crea una cuenta ACTIVE porque estas historias no definen verificación de correo. Cambiar esa política a PENDING requiere definir el flujo de activación. La respuesta no concede acceso autenticado.
 
-- `identity/interfaces/rest/PublicPresentationController`, resources y assembler: conservar las dos rutas `/api/v1/public/presentations/brands` y `/creators`, públicas y de solo lectura.
-- `identity/application/queries/GetPresentationQuery`, handler y proyección `PublicPresentationView`: audiencia, idioma, título, propuesta y beneficios. La audiencia de un visitante no es una cuenta autenticada ni un permiso.
-- `identity/application/ports/PresentationContentProvider`: contrato de lectura del contenido publicado, sin repositorio de Account ni dependencia de Campaign.
-- `identity/infrastructure/content` y configuración: adapter de catálogo versionado; recurso localizado bajo `src/main/resources/identity/presentations/`.
-- `identity/domain`: conservar el modelo de identidad del reporte; no trasladar allí artificialmente Presentation o Benefit solo para ocupar las cuatro capas. Un query informativo puede devolver una proyección sin cargar un agregado.
-- Tests de la API dentro de `identity`, manteniendo los contratos y beneficios actuales. No duplicar infraestructura por segmento ni colocar el catálogo en Shared.
-
-US-03/04 permanecen como contenido de cliente en este entregable. Si posteriormente se solicita servirlas por API, podrán usar la misma extensión informativa; no implementarán las operaciones reales que describen. US-05 necesita recepción de contacto fuera del modelo actual y continúa excluida; no se disfraza como gestión de cuentas.
+La transacción del adapter persiste Account y perfil juntos y traduce la restricción UNIQUE del correo a un conflicto de negocio incluso bajo concurrencia. El adapter save actual implementa inserción de registro; deberá ampliarse para actualización/versionado de agregados al abordar US-11/13/14. No persiste redes sociales todavía y rechaza intentos de guardar asociaciones antes de implementar ese adapter, evitando descartarlas silenciosamente.
 
 - **Domain:** agregados, entidades, value objects, eventos, políticas y repositorios abstractos. Java puro, sin Spring/JPA, HTTP o dependencias a capas externas.
 - **Application:** commands/queries y servicios de entrada; puertos de salida para seguridad, OAuth y lecturas. Los futuros handlers coordinan transacciones, autorizaciones, dominio y puertos.
@@ -92,16 +79,16 @@ En esta base, Identity y Campaign tienen modelos/puertos tipados. Collaboration,
 
 ## Trazabilidad por historia: contexto, capas y escenarios
 
-US-01 y US-02 están implementadas en el backend; los handlers/contratos de las demás filas siguen siendo objetivos del plan. Se mantienen exactamente las 18 posiciones. En filas de cliente se identifica explícitamente que no corresponde forzar un agregado backend.
+US-09 y US-10 están implementadas en el backend; los handlers/contratos de las demás historias de backend siguen siendo objetivos del plan. Se mantienen exactamente las 18 posiciones. Las primeras ocho filas son trazabilidad de landing, no trabajo backend.
 
 | Posición / US | Dueño y modelo | Application y dependencias | Interfaces / Infrastructure | Escenarios y límite de implementación |
 |---|---|---|---|---|
-| 1 / US-01 | Contenido de onboarding; extensión técnica propuesta en Identity, sin agregado. | GetPresentationQuery(BRAND) → proyección por PresentationContentProvider. Sin commands ni consultas a otros contextos. | PublicPresentationController; catálogo publicado y configuración en Identity. Sin MySQL ni autenticación para esta lectura. | Propuesta profesional/justa y beneficios de centralizar campañas, requisitos, entregables, compensaciones y seguimiento. La API no acredita por sí sola comprensión del visitante. |
-| 2 / US-02 | Misma responsabilidad y ubicación que US-01, audiencia CREATOR. | Mismo query/handler/puerto, diferente contenido; no otro servicio de dominio por segmento. | Segunda ruta del mismo controller y adapter de contenido. | Encontrar/gestionar campañas y conocer requisitos, entregables, fechas y compensación antes de aceptar. No consultar colaboraciones ni pagos reales. |
+| 1 / US-01 | Landing; sin dueño backend. | Sin commands/queries. Implementación informativa retirada. | Presentación para empresas en landing. | Propuesta profesional/justa y beneficios; validar comprensión en landing, no mediante un backend editorial. |
+| 2 / US-02 | Landing; sin dueño backend. | Sin commands/queries. Implementación informativa retirada. | Presentación para creadores en landing. | Encontrar/gestionar oportunidades y conocer condiciones antes de aceptar. |
 | 3 / US-03 | Presentación de cliente/landing; sin modelo transaccional. | Ningún command o query backend en este corte. | HowScreen / HOW_BRAND con contenido informativo. | Explicar creación, postulación, selección, ejecución y validación previa al pago. Mencionar esos pasos no autoriza implementar US-20 a US-28. |
-| 4 / US-04 | Presentación de cliente/landing. | Sin caso de uso backend; eventual API informativa sería la misma extensión de onboarding. | HowScreen / HOW_CREATOR. | Explicar búsqueda, postulación, aceptación, entrega y validación; conocer condiciones antes de confirmar. Sin crear AgreementSnapshot ni Collaboration. |
+| 4 / US-04 | Presentación de cliente/landing. | Sin caso de uso backend en este entregable. | HowScreen / HOW_CREATOR. | Explicar búsqueda, postulación, aceptación, entrega y validación; conocer condiciones antes de confirmar. Sin crear AgreementSnapshot ni Collaboration. |
 | 5 / US-05 | Contacto de landing, excluido; ningún canvas define soporte al visitante. | No introducir ContactRequest en Account o Shared. Servicio receptor a acordar en el trabajo de landing. | ContactScreen; envío y validación real pendientes fuera de este backend. | Consulta registrada/recepción confirmada e información incompleta. Una confirmación local no cumple el escenario de registro. |
-| 6 / US-06 | Localización de presentación, cliente. | Sin agregado ni actualización de Account. Las APIs de US-01/02 existentes solo publican español; no declarar cumplimiento completo de US-06. | Recursos es/en y estado de idioma conservado al navegar. Si se externaliza contenido, coordinar idioma del catálogo y cliente. | Inglés, español y conservación de idioma. No confundir locale con rol o autorización. |
+| 6 / US-06 | Localización de landing. | Sin agregado, catálogo backend ni actualización de Account. | Recursos es/en y estado de idioma conservado al navegar. | Inglés, español y conservación de idioma. No confundir locale con rol o autorización. |
 | 7 / US-07 | Diseño adaptable, cliente/landing. | Sin operación backend. | Layouts y pruebas visuales móvil/escritorio/orientación. | Acceso sin pérdida de información y cambio de orientación; ningún contexto garantiza responsive mediante un endpoint. |
 | 8 / US-08 | Navegación de cliente hacia entrada de Identity. | No crea cuenta; depende de los registros US-09/10 al enviar sus formularios. | RolePickerScreen dirige al formulario correcto. | Ruta empresarial y ruta creador. El selector de segmento no otorga un rol autenticado. |
 | 9 / US-17 | Campaign; proyección de campañas publicadas. | SearchCampaignsQuery/handler y puerto de búsqueda paginada; datos de marca por contrato de Identity si se necesitan. | CampaignController; CampaignSearchAdapter, filtros e índices locales a Campaign. | Coincidencias y lista vacía. No devolver borradores ajenos ni crear métricas de Performance para filtrar. |
@@ -137,9 +124,11 @@ Campos añadidos al esqueleto para cubrir inputs existentes de la app: CreatorPr
 
 CampaignRequirement se conserva como **entidad** por tener requirementId y una fila propia en el diagrama. CompensationTerms es un value object local a Campaign, almacenado junto al agregado; aún no implica cobrar o activar Billing.
 
-Los agregados actuales contienen estructura y acceso de lectura; faltan transiciones como publish, defineConditions, submit/update/cancel. Las invariantes mínimas de IDs, correo, tipo de perfil y copia defensiva de colecciones ya están en la base; completar las reglas de escenarios será trabajo del siguiente paso. No usar setters genéricos que permitan saltar las transiciones.
+Account implementa factories de registro e invariantes de perfil/tipo, correo y hash requerido. Los agregados de Campaign aún son estructurales; faltan transiciones como publish, defineConditions, submit/update/cancel. No usar setters genéricos que permitan saltar las transiciones.
 
-## Contratos REST propuestos (aún no implementados)
+## Contratos REST: registro implementado y casos futuros
+
+POST /auth/brands y POST /auth/creators están implementados. Los demás endpoints de esta tabla siguen siendo propuestas. Ver ejemplos y errores del registro en [registration-api.md](registration-api.md).
 
 Prefijo `/api/v1`. UUID como string, fechas ISO-8601 y tiempos UTC con zona; convertir desde dd/mm/aaaa y formatear en el cliente. Nombres de propiedades y estados en inglés, traducidos en Compose. Paginación desde cero; límite 1–100. Ningún ID de actor o rol enviado por la app será autoridad: derivarlo del token autenticado y su perfil.
 
@@ -174,25 +163,21 @@ HTTP: 400 errores de input, 401 acceso inválido/ausente, 403 rol/propiedad insu
 
 La matriz mantiene el orden del backlog; la secuencia de implementación resuelve primero las dependencias (Identity antes de crear campañas o postular). No cambia el corte de 18 filas.
 
-### 0. US-01/US-02: implementación y corrección de ubicación completadas
+### 0. Retirar backend de landing — completado
 
-Ejecutado el 05/10/2026 tras la autorización:
-
-1. Conservar los contratos HTTP y el contenido publicado de las dos historias; registrar las pruebas actuales como línea base.
-2. Reubicar controller, recursos/assembler, query/handler/puerto, adapter/configuración y catálogo en las capas de Identity descritas arriba. Convertir el modelo editorial actual en proyecciones de Application; no alterar Account ni copiar contenido a Campaign.
-3. Reubicar pruebas y actualizar referencias/imports, README y `public-presentations-api.md`. Revisar que no queden referencias al antiguo paquete o recurso `publiccontent`.
-4. Retirar exclusivamente los archivos/directorios del módulo anterior una vez reemplazados y comprobados; preservar cualquier cambio ajeno.
-5. Ejecutar la suite Maven, comprobar arranque skeleton y ambas respuestas. Añadir comprobación del inventario de contextos y de que ningún paquete de dominio importe proyecciones, Spring, HTTP o persistencia. Las pruebas actuales de imports por sí solas no demuestran todos los límites DDD.
-
-Esta tarea implementa las dos lecturas y corrige su arquitectura; no crea un CMS, integra el móvil ni implementa las otras 16 posiciones. Resultado: código y recursos dentro de Identity, antiguo módulo retirado, documentación actualizada y 17 pruebas satisfactorias con `mvnw.cmd -B clean test`, incluyendo ambas rutas por HTTP real y arranque sin MySQL. Las fases siguientes siguen pendientes.
+Se retiró toda la implementación exclusiva de US-01/US-02 y su documento de API. Las pruebas de registro comprueban que las rutas informativas antiguas ya no existen. Se mantienen las seis carpetas permitidas: cinco contextos del reporte y Shared; las primeras ocho posiciones continúan contando dentro del corte, pero no se implementan en backend.
 
 ### 1. Persistencia y composición
 
 Crear entidades JPA/mappers en Infrastructure sin anotar el dominio. Versionar esquema con migraciones; fijar índices y restricciones anteriores. Añadir optimistic locking al modelo persistido y transacciones en handlers. Crear datos de desarrollo controlados con campañas abiertas/cerradas, nunca simular que son productivos. Configurar perfil local MySQL separado del perfil skeleton; no usar ddl-auto=create/update en entornos compartidos.
 
+Completado para registro: tres entidades JPA de Identity, mapper, adapter transaccional, migración V1, columna de versión, perfil local MySQL y Compose con volumen persistente. El dominio sigue sin anotaciones JPA. Persistencia de Campaign/redes sociales permanece pendiente. Local es ahora el perfil por defecto; skeleton es opcional y no expone registros al no tener DB.
+
 ### 2. Identity: US-10, US-11 y US-09
 
 Implementar RegisterCreatorCommandHandler y RegisterBrandCommandHandler para crear Account/perfil inicial y rechazar correos duplicados (también en condición de carrera por índice UNIQUE). Añadir PasswordHasher y AccessTokenProvider concretos con configuración externa. Account activo recibe acceso; cuentas no activas o contraseña incorrecta reciben denegación. El rol del token dirige Home; retirar selector de rol ficticio de Login.
+
+Estado: RegisterCreatorCommandHandler, RegisterBrandCommandHandler y PasswordHasher están implementados para US-10/09. AccessTokenProvider, autenticación y recuperación de US-11 no lo están. Crear Account ACTIVE no genera sesión ni permite que el frontend trate el resultado de registro como login.
 
 Implementar RecoverAccountCommandHandler con token aleatorio de un solo uso, hash persistido, expiración y correo mediante adapter. La respuesta pública no debe revelar si existe un correo. Agregar confirmación de cambio de contraseña y pantalla/app-link de recuperación: el prototipo actualmente solo pide correo. Esta extensión cierra el flujo de US-11, no introduce una fila nueva.
 
@@ -237,8 +222,8 @@ No se modifican ahora las pantallas de E:/CollabPro. Añadir posteriormente Retr
 
 Pruebas de dominio para todos los escenarios de la sección 2.4.1 seleccionados; integración con MySQL para UNIQUE/FK/races y rollback; pruebas HTTP de autorización/propiedad/estados y JSON esperado; contrato de cliente para listado vacío, campaña cerrada, duplicados y errores por campo. OAuth con proveedor sandbox o stub explícito de prueba, nunca presentado como autorización real. Recovery con entrega verificable en ambiente de prueba. Pruebas E2E: registrar empresa y creador → publicar campaña completa → buscar/detalle → postular/editar/cancelar.
 
-La base requiere compilación, arranque skeleton y comprobación de límites de dependencias. US-01/US-02 añaden pruebas HTTP del contenido exigido por sus cuatro escenarios. Estas verificaciones acreditan las respuestas del backend; la presentación y comprensión por el usuario final aún se deben validar en landing/app conectadas.
+La base requiere compilación y comprobación de límites de dependencias. US-09/US-10 tienen pruebas de dominio/handlers/hashing y pruebas HTTP/JPA de registro válido, duplicado normalizado en ambos roles, validación, ausencia de secretos, concurrencia y rollback. Se verifica la eliminación de rutas de landing. La integración visual de la app permanece pendiente.
 
 ## Entregables del siguiente paso
 
-US-01/US-02 y su refactor de la fase 0 están completados en el backend. Para las fases posteriores se planifican handlers y reglas completos, recursos/controller/assemblers, migraciones y adapters JPA, configuración de seguridad/OAuth/recovery, OpenAPI versionado con ejemplos y matriz de pruebas por escenario. La conexión del cliente sigue siendo posterior y solo para las historias del corte. URLs/proveedores definitivos se fijarán entonces; esas fases no se implementaron en esta tarea.
+La retirada de US-01/US-02 y el registro de US-09/US-10 están completados. Para las fases posteriores se planifican los demás handlers, seguridad de sesiones/recuperación, OAuth, persistencia y reglas de Campaign y OpenAPI. La conexión del cliente sigue siendo posterior y solo para las historias del corte; esas fases no se implementaron en esta tarea.
