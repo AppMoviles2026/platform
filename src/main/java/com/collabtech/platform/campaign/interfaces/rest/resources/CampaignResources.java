@@ -12,7 +12,7 @@ public final class CampaignResources {
     private CampaignResources() {}
     public record Compensation(String type, BigDecimal amount, String currency, String description) {}
     public record Summary(UUID id, UUID brandId, String brandName, String title, String category, String location,
-            Compensation compensation, Instant applicationDeadline, String status) {}
+            Compensation compensation, Instant applicationDeadline, String status, boolean acceptsApplications) {}
     public record Requirement(UUID id, String description, boolean mandatory, String ruleType, String expectedValue) {}
     public record Deliverable(UUID id, String contentType, String description, int quantity, Instant deadline) {}
     public record Details(UUID id, UUID brandId, String brandName, String title, String category, String location,
@@ -24,7 +24,7 @@ public final class CampaignResources {
     }
     public static Summary summary(CampaignViews.Summary view) {
         return new Summary(view.id(), view.brandId(), view.brandName(), view.title(), view.category(), view.location(),
-                compensation(view.compensation()), view.applicationDeadline(), view.status());
+                compensation(view.compensation()), view.applicationDeadline(), view.status(), view.acceptsApplications());
     }
     public static PageResult<Summary> page(PageResult<CampaignViews.Summary> view) {
         return new PageResult<>(view.items().stream().map(CampaignResources::summary).toList(), view.total(), view.page(), view.size());

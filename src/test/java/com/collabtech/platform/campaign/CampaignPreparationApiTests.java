@@ -40,6 +40,51 @@ class CampaignPreparationApiTests {
     private MockMvc mvc;
     private static final String METADATA = "{\"title\":\"Campaña de prueba\",\"objective\":\"Mostrar producto\",\"category\":\"Moda\",\"targetAudience\":\"Adultos de Lima\",\"location\":\"Lima\"}";
     @BeforeEach void setup() { mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build(); }
+    @Test void onlyOwnerCanDiscardDraftIncludingConditionsButCannotDeletePublishedCampaign() throws Exception {
+        var brand=account("brands"); var other=account("brands"); var creator=account("creators"); String id=create(brand.token);
+        conditions(brand.token,id,validConditions()).andExpect(status().isOk());
+        mvc.perform(delete("/api/v1/campaigns/"+id).header("Authorization",bearer(other.token))).andExpect(status().isForbidden());
+        mvc.perform(delete("/api/v1/campaigns/"+id).header("Authorization",bearer(creator.token))).andExpect(status().isForbidden());
+        mvc.perform(delete("/api/v1/campaigns/"+id).header("Authorization",bearer(brand.token))).andExpect(status().isNoContent());
+        assertTrue(campaigns.findById(new CampaignId(UUID.fromString(id))).isEmpty());
+        mvc.perform(delete("/api/v1/campaigns/"+id).header("Authorization",bearer(brand.token))).andExpect(status().isNotFound());
+        String published=create(brand.token); conditions(brand.token,published,validConditions()).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/campaigns/"+published+"/publication").header("Authorization",bearer(brand.token))).andExpect(status().isOk());
+        mvc.perform(delete("/api/v1/campaigns/"+published).header("Authorization",bearer(brand.token)))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CAMPAIGN_NOT_DRAFT"));
+    }
+    @Test void campaignCreationReplaysResponseAndRejectsKeyReuseWithDifferentData() throws Exception {
+        var brand=account("brands"); String key=UUID.randomUUID().toString();
+        var first=mvc.perform(post("/api/v1/campaigns").header("Authorization",bearer(brand.token)).header("Idempotency-Key",key)
+                .contentType(MediaType.APPLICATION_JSON).content(METADATA)).andExpect(status().isCreated()).andReturn().getResponse();
+        var replay=mvc.perform(post("/api/v1/campaigns").header("Authorization",bearer(brand.token)).header("Idempotency-Key",key)
+                .contentType(MediaType.APPLICATION_JSON).content(METADATA)).andExpect(status().isCreated()).andReturn().getResponse();
+        assertEquals(first.getContentAsString(),replay.getContentAsString()); assertEquals(first.getHeader("Location"),replay.getHeader("Location"));
+        assertEquals(1,jdbc.queryForObject("select count(*) from campaign_campaign where brand_id=?",Integer.class,brand.profileId));
+        mvc.perform(post("/api/v1/campaigns").header("Authorization",bearer(brand.token)).header("Idempotency-Key",key)
+                .contentType(MediaType.APPLICATION_JSON).content(METADATA.replace("Campaña de prueba","Otra campaña")))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REUSED"));
+        mvc.perform(post("/api/v1/campaigns").header("Authorization",bearer(brand.token)).header("Idempotency-Key","short")
+                .contentType(MediaType.APPLICATION_JSON).content(METADATA)).andExpect(status().isBadRequest());
+        var other=account("brands");
+        var isolated=mvc.perform(post("/api/v1/campaigns").header("Authorization",bearer(other.token)).header("Idempotency-Key",key)
+                .contentType(MediaType.APPLICATION_JSON).content(METADATA)).andExpect(status().isCreated()).andReturn().getResponse();
+        assertNotEquals(first.getHeader("Location"),isolated.getHeader("Location"));
+    }
+    @Test void concurrentCampaignCreationWithSameKeyCreatesOnlyOneDraft() throws Exception {
+        var brand=account("brands"); String key=UUID.randomUUID().toString();
+        var pool=java.util.concurrent.Executors.newFixedThreadPool(2); var start=new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.Callable<String> action=() -> {
+            start.await();
+            return mvc.perform(post("/api/v1/campaigns").header("Authorization",bearer(brand.token)).header("Idempotency-Key",key)
+                    .contentType(MediaType.APPLICATION_JSON).content(METADATA)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        };
+        try {
+            var first=pool.submit(action); var second=pool.submit(action); start.countDown();
+            assertEquals(first.get(20,java.util.concurrent.TimeUnit.SECONDS),second.get(20,java.util.concurrent.TimeUnit.SECONDS));
+            assertEquals(1,jdbc.queryForObject("select count(*) from campaign_campaign where brand_id=?",Integer.class,brand.profileId));
+        } finally { start.countDown(); pool.shutdownNow(); }
+    }
     @Test void completeCampaignIsPublishedAndVisibleToEveryRegisteredCreator() throws Exception {
         var brand = account("brands"); var first = account("creators"); var second = account("creators");
         String id = create(brand.token);

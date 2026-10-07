@@ -6,14 +6,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import com.collabtech.platform.identity.application.ports.AccessTokenVerifier;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 public final class BearerSessionFilter extends OncePerRequestFilter {
-    private final DatabaseAccessTokenProvider tokens;
-    public BearerSessionFilter(DatabaseAccessTokenProvider tokens) { this.tokens = tokens; }
+    private final AccessTokenVerifier tokens;
+    public BearerSessionFilter(AccessTokenVerifier tokens) { this.tokens = tokens; }
     @Override protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws IOException, ServletException {
         String header = request.getHeader("Authorization");

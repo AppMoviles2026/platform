@@ -16,7 +16,7 @@ public class CampaignExceptionHandler {
     public ResponseEntity<ApiError> business(CampaignFailure failure) {
         HttpStatus status = switch (failure.code()) {
             case INVALID_CONDITIONS, INCOMPLETE_CAMPAIGN -> HttpStatus.UNPROCESSABLE_ENTITY;
-            case CAMPAIGN_NOT_DRAFT, CAMPAIGN_NOT_ACCEPTING_APPLICATIONS, APPLICATION_ALREADY_EXISTS, APPLICATION_NOT_PENDING, CONCURRENT_UPDATE -> HttpStatus.CONFLICT;
+            case CAMPAIGN_NOT_DRAFT, CAMPAIGN_NOT_OPEN, CAMPAIGN_HAS_APPLICATIONS, IDEMPOTENCY_KEY_REUSED, CAMPAIGN_NOT_ACCEPTING_APPLICATIONS, APPLICATION_ALREADY_EXISTS, APPLICATION_NOT_PENDING, CONCURRENT_UPDATE -> HttpStatus.CONFLICT;
             case CAMPAIGN_NOT_FOUND, APPLICATION_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case INVALID_CONFIRMATION -> HttpStatus.BAD_REQUEST;
             default -> HttpStatus.FORBIDDEN;
@@ -25,6 +25,9 @@ public class CampaignExceptionHandler {
             case INVALID_CONDITIONS -> "Las condiciones son incompatibles: revisa requisitos, entregables, fechas y compensación.";
             case INCOMPLETE_CAMPAIGN -> "Completa las condiciones antes de publicar.";
             case CAMPAIGN_NOT_DRAFT -> "Solo se permite preparar o publicar una campaña en borrador.";
+            case CAMPAIGN_NOT_OPEN -> "Solo puedes cerrar postulaciones de una campaña publicada.";
+            case CAMPAIGN_HAS_APPLICATIONS -> "No puedes descartar una campaña con postulaciones.";
+            case IDEMPOTENCY_KEY_REUSED -> "La clave de reintento ya se utilizó con otra solicitud.";
             case CAMPAIGN_NOT_FOUND -> "La campaña no existe.";
             case BRAND_REQUIRED -> "Esta operación requiere una empresa.";
             case CREATOR_REQUIRED -> "Esta operación requiere un creador.";

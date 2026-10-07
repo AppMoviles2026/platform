@@ -58,7 +58,13 @@ class IdentityLifecycleApiTests {
         var session = json.readTree(body);
         assertEquals(route.equals("brands") ? "BRAND" : "CREATOR", session.path("account").path("accountType").asText());
         String token = session.path("accessToken").asText();
-        assertTrue(token.matches("[A-Za-z0-9_-]{43}"));
+        assertTrue(token.matches("[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+"));
+        var claims = json.readTree(java.util.Base64.getUrlDecoder().decode(token.split("\\.")[1]));
+        assertEquals(session.path("account").path("accountId").asText(), claims.path("sub").asText());
+        assertEquals(session.path("account").path("accountType").asText(), claims.path("role").asText());
+        assertEquals("collabpro-platform", claims.path("iss").asText());
+        assertEquals("collabpro-clients", claims.path("aud").isArray() ? claims.path("aud").get(0).asText() : claims.path("aud").asText());
+        assertFalse(claims.has("email"));
         assertTrue(Instant.parse(session.path("expiresAt").asText()).isAfter(Instant.now()));
         assertEquals(1, jdbc.queryForObject("select count(*) from identity_access_session where token_hash=?",
                 Integer.class, SecureTokens.digest(token)));
@@ -221,6 +227,69 @@ class IdentityLifecycleApiTests {
         mvc.perform(put("/api/v1/profiles/me/creator").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"displayName\":\"Actualizado\"}")).andExpect(status().isOk());
         mvc.perform(get("/api/v1/social-accounts/me").header("Authorization", "Bearer " + token)).andExpect(jsonPath("$.length()").value(1));
+    }
+    @Test void androidAuthorizationReturnsOnlyAttemptIdAndOwnerCanReadSuccess() throws Exception {
+        String owner = token(register("creators")); String other = token(register("creators"));
+        var pending = startAndroidAuthorization(owner);
+        String id = pending.path("authorizationId").asText();
+        String state = URI.create(pending.path("authorizationUrl").asText()).getQuery().substring("state=".length());
+        mvc.perform(get("/api/v1/social-accounts/authorizations/"+id).header("Authorization","Bearer "+owner))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PENDING"));
+        mvc.perform(get("/api/v1/social-accounts/authorizations/"+id).header("Authorization","Bearer "+other))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/social-accounts/authorizations/"+id)).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/social-accounts/tiktok/callback").param("state",state).param("code","approved"))
+                .andExpect(status().isSeeOther()).andExpect(header().string("Location","collabpro://social-authorization-completed?authorizationId="+id));
+        mvc.perform(get("/api/v1/social-accounts/authorizations/"+id).header("Authorization","Bearer "+owner))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SUCCEEDED")).andExpect(jsonPath("$.errorCode").isEmpty());
+        mvc.perform(get("/api/v1/social-accounts/tiktok/callback").param("state",state).param("code","approved"))
+                .andExpect(status().isBadRequest()).andExpect(header().doesNotExist("Location"));
+        mvc.perform(get("/api/v1/social-accounts/authorizations/"+id).header("Authorization","Bearer "+owner))
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+    }
+    @Test void androidDenialAndDuplicateArePersistedWithoutReturningProviderSecrets() throws Exception {
+        String owner = token(register("creators"));
+        var denied=startAndroidAuthorization(owner); String deniedId=denied.path("authorizationId").asText();
+        String deniedState=URI.create(denied.path("authorizationUrl").asText()).getQuery().substring("state=".length());
+        mvc.perform(get("/api/v1/social-accounts/tiktok/callback").param("state",deniedState).param("error","untrusted-provider-description"))
+                .andExpect(status().isSeeOther());
+        mvc.perform(get("/api/v1/social-accounts/authorizations/"+deniedId).header("Authorization","Bearer "+owner))
+                .andExpect(jsonPath("$.status").value("FAILED")).andExpect(jsonPath("$.errorCode").value("AUTHORIZATION_DENIED"));
+        mvc.perform(get("/api/v1/social-accounts/tiktok/callback").param("state",authorize(owner,"tiktok")).param("code","approved"))
+                .andExpect(status().isOk());
+        var duplicate=startAndroidAuthorization(owner); String id=duplicate.path("authorizationId").asText();
+        String state=URI.create(duplicate.path("authorizationUrl").asText()).getQuery().substring("state=".length());
+        mvc.perform(get("/api/v1/social-accounts/tiktok/callback").param("state",state).param("code","approved"))
+                .andExpect(status().isSeeOther());
+        mvc.perform(get("/api/v1/social-accounts/authorizations/"+id).header("Authorization","Bearer "+owner))
+                .andExpect(jsonPath("$.status").value("FAILED")).andExpect(jsonPath("$.errorCode").value("SOCIAL_ACCOUNT_ALREADY_LINKED"));
+        mvc.perform(get("/api/v1/social-accounts/me").header("Authorization","Bearer "+owner)).andExpect(jsonPath("$.length()").value(1));
+    }
+    @Test void androidProviderFailureAndExpiredAuthorizationAreQueryable() throws Exception {
+        String owner = token(register("creators"));
+        var failed=startAndroidAuthorization(owner); String id=failed.path("authorizationId").asText();
+        String state=URI.create(failed.path("authorizationUrl").asText()).getQuery().substring("state=".length());
+        when(social.exchangeCode(any(),eq("failed"))).thenThrow(new IllegalStateException("sensitive-provider-payload"));
+        mvc.perform(get("/api/v1/social-accounts/tiktok/callback").param("state",state).param("code","failed"))
+                .andExpect(status().isSeeOther());
+        mvc.perform(get("/api/v1/social-accounts/authorizations/"+id).header("Authorization","Bearer "+owner))
+                .andExpect(jsonPath("$.status").value("FAILED")).andExpect(jsonPath("$.errorCode").value("PROVIDER_FAILED"));
+        var expired=startAndroidAuthorization(owner); String expiredId=expired.path("authorizationId").asText();
+        String expiredState=URI.create(expired.path("authorizationUrl").asText()).getQuery().substring("state=".length());
+        var past=Timestamp.from(Instant.now().minusSeconds(10));
+        jdbc.update("update identity_oauth_authorization set expires_at=? where authorization_id=?",past,expiredId);
+        jdbc.update("update identity_oauth_state set expires_at=? where authorization_id=?",past,expiredId);
+        mvc.perform(get("/api/v1/social-accounts/authorizations/"+expiredId).header("Authorization","Bearer "+owner))
+                .andExpect(jsonPath("$.status").value("EXPIRED"));
+        mvc.perform(get("/api/v1/social-accounts/tiktok/callback").param("state",expiredState).param("code","approved"))
+                .andExpect(status().isBadRequest()).andExpect(header().doesNotExist("Location"));
+        mvc.perform(post("/api/v1/social-accounts/tiktok/authorizations").param("client","https://attacker.example")
+                .header("Authorization","Bearer "+owner)).andExpect(status().isBadRequest());
+    }
+    private tools.jackson.databind.JsonNode startAndroidAuthorization(String token) throws Exception {
+        var result=mvc.perform(post("/api/v1/social-accounts/tiktok/authorizations").param("client","ANDROID")
+                .header("Authorization","Bearer "+token)).andExpect(status().isOk()).andReturn();
+        return json.readTree(result.getResponse().getContentAsString());
     }
     @Test void loginAndProfileAccessWorkOverRealHttpWithSecurityFilters() throws Exception {
         String email = register("creators");

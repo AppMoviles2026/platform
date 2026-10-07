@@ -38,8 +38,10 @@ public class IdentityWorkflowConfiguration {
     @Bean SecretCipher identitySecretCipher(Environment env) {
         return new SecretCipher(env.getRequiredProperty("identity.encryption-key"));
     }
-    @Bean DatabaseAccessTokenProvider accessTokenProvider(JdbcTemplate jdbc, Clock clock) {
-        return new DatabaseAccessTokenProvider(jdbc, clock);
+    @Bean DatabaseAccessTokenProvider accessTokenProvider(JdbcTemplate jdbc, Clock clock, Environment env) {
+        return new DatabaseAccessTokenProvider(jdbc, clock, env.getRequiredProperty("identity.jwt.secret"),
+                env.getRequiredProperty("identity.jwt.issuer"), env.getRequiredProperty("identity.jwt.audience"),
+                env.getRequiredProperty("identity.jwt.ttl-seconds", Long.class));
     }
     @Bean CurrentActor currentActor() { return new SecurityContextActor(); }
     @Bean AuthorizationStateStore authorizationStateStore(JdbcTemplate jdbc, Clock clock) {

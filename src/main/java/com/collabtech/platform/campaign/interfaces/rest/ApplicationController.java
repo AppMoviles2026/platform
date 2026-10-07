@@ -22,8 +22,9 @@ public class ApplicationController {
     public record Update(@NotBlank @Size(max=4000) String message,@PositiveOrZero Long expectedVersion) {}
     public record Cancel(@PositiveOrZero Long expectedVersion) {}
     @PostMapping("/campaigns/{id}/applications")
-    public ResponseEntity<CampaignViews.ApplicationView> submit(@PathVariable UUID id,@Valid @RequestBody Submit body) {
-        var result=service.submit(actor.accountId(),new CampaignId(id),body.message(),body.confirmedRequirementIds());
+    public ResponseEntity<CampaignViews.ApplicationView> submit(@PathVariable UUID id,@Valid @RequestBody Submit body,
+            @RequestHeader(name="Idempotency-Key",required=false) String key) {
+        var result=service.submit(actor.accountId(),new CampaignId(id),body.message(),body.confirmedRequirementIds(),key);
         return ResponseEntity.created(URI.create("/api/v1/applications/"+result.id())).body(result);
     }
     @GetMapping("/applications/mine")

@@ -87,6 +87,15 @@ public final class Campaign extends AggregateRoot<CampaignId> {
         status = CampaignStatus.OPEN; publicationDate = now;
         recordEvent(new CampaignPublished(UUID.randomUUID(), now, id()));
     }
+    /** Closing intake does not decide or cancel existing applications. */
+    public void close(Instant now) {
+        if (status == CampaignStatus.CLOSED) return;
+        if (status != CampaignStatus.OPEN) throw new CampaignFailure(CampaignFailure.Code.CAMPAIGN_NOT_OPEN);
+        Objects.requireNonNull(now);
+        status = CampaignStatus.CLOSED;
+        recordEvent(new com.collabtech.platform.campaign.domain.events.CampaignClosed(UUID.randomUUID(), now, id()));
+    }
+    public void requireDiscardable() { requireDraft(); }
     private void requireDraft() {
         if (status != CampaignStatus.DRAFT) throw new CampaignFailure(CampaignFailure.Code.CAMPAIGN_NOT_DRAFT);
     }

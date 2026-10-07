@@ -23,12 +23,14 @@ public final class CampaignPreparationService {
     private final CreateCampaignCommandHandler create;
     private final DefineCampaignConditionsCommandHandler conditions;
     private final PublishCampaignCommandHandler publish;
+    private final IdempotentCommands idempotency;
     public CampaignPreparationService(CampaignActorGateway actors, CampaignUnitOfWork transactions,
-            CampaignRepository campaigns, CampaignCatalog catalog, Clock clock) {
+            CampaignRepository campaigns, CampaignCatalog catalog, Clock clock, IdempotentCommands idempotency) {
         this.actors = actors; this.transactions = transactions; this.campaigns = campaigns; this.catalog = catalog; this.clock = clock;
         create = new CreateCampaignCommandHandler(catalog);
         conditions = new DefineCampaignConditionsCommandHandler(campaigns, clock);
         publish = new PublishCampaignCommandHandler(campaigns, clock);
+        this.idempotency = idempotency;
     }
     public CampaignViews.Details create(UUID accountId, String title, String objective, String description, String category, String audience, String location) {
         return transactions.execute(() -> {
@@ -37,6 +39,10 @@ public final class CampaignPreparationService {
                     location == null ? brand.location() : location));
             return details(campaigns.findById(id).orElseThrow());
         });
+    }
+    public CampaignViews.Details create(UUID accountId, String title, String objective, String description, String category, String audience, String location, String key) {
+        return idempotency.execute(accountId, "CREATE_CAMPAIGN", key, RequestFingerprint.of(title,objective,description,category,audience,location),
+                CampaignViews.Details.class, () -> create(accountId,title,objective,description,category,audience,location));
     }
     public CampaignViews.Details define(UUID accountId, CampaignId id, List<CampaignViews.Requirement> requirements,
             List<CampaignViews.Deliverable> deliverables, Instant deadline, CompensationTerms compensation) {
@@ -59,13 +65,24 @@ public final class CampaignPreparationService {
             return details(campaign);
         });
     }
+    public CampaignViews.Details close(UUID accountId, CampaignId id) {
+        return transactions.execute(() -> {
+            var saved = new CloseCampaignCommandHandler(campaigns, clock)
+                    .handle(new CloseCampaignCommand(actors.getActiveBrand(accountId).id(), id));
+            return details(campaigns.findById(saved).orElseThrow());
+        });
+    }
+    public void discard(UUID accountId, CampaignId id) {
+        transactions.execute(() -> new DiscardCampaignCommandHandler(campaigns)
+                .handle(new DiscardCampaignCommand(actors.getActiveBrand(accountId).id(), id)));
+    }
     public PageResult<CampaignViews.Summary> mine(UUID accountId, PageRequest page) {
-        return transactions.execute(() -> new GetBrandCampaignsQueryHandler(catalog)
+        return transactions.execute(() -> new GetBrandCampaignsQueryHandler(catalog, clock)
                 .handle(new GetBrandCampaignsQuery(actors.getActiveBrand(accountId).id(), page)));
     }
     public PageResult<CampaignViews.Summary> published(UUID accountId, PageRequest page) {
         return transactions.execute(() -> { actors.requireActiveCreator(accountId);
-            return new GetPublishedCampaignsQueryHandler(catalog).handle(new GetPublishedCampaignsQuery(page)); });
+            return new GetPublishedCampaignsQueryHandler(catalog, clock).handle(new GetPublishedCampaignsQuery(page)); });
     }
     private CampaignViews.Details details(Campaign campaign) {
         return com.collabtech.platform.campaign.application.projections.CampaignViewMapper.details(campaign, catalog.brandName(campaign.id()), clock.instant());

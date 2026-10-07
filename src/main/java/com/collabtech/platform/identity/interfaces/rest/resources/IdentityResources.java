@@ -13,7 +13,7 @@ public final class IdentityResources {
     }
     public record CreatorProfile(UUID profileId, String displayName, String biography, String niche, String audienceDescription, String location) {}
     public record SocialAccount(UUID id, String platform, String username, String status) {}
-    public record Authorization(URI authorizationUrl) {}
+    public record Authorization(URI authorizationUrl, UUID authorizationId) {}
     public record RecoveryAccepted(String message) {}
     public static Session session(IdentityViews.SessionView view) {
         return new Session(RegistrationResourceAssembler.toResource(view.account()), view.accessToken(), view.tokenType(), view.expiresAt());

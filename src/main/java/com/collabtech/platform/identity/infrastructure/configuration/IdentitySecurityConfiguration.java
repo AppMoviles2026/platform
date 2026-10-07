@@ -1,6 +1,6 @@
 package com.collabtech.platform.identity.infrastructure.configuration;
 
-import com.collabtech.platform.identity.infrastructure.security.DatabaseAccessTokenProvider;
+import com.collabtech.platform.identity.application.ports.AccessTokenVerifier;
 import com.collabtech.platform.identity.infrastructure.security.BearerSessionFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,7 +17,7 @@ public class IdentitySecurityConfiguration {
     @Bean org.springframework.security.core.userdetails.UserDetailsService disabledDefaultUsers() {
         return username -> { throw new org.springframework.security.core.userdetails.UsernameNotFoundException("No default users"); };
     }
-    @Bean SecurityFilterChain identitySecurity(HttpSecurity http, DatabaseAccessTokenProvider tokens) throws Exception {
+    @Bean SecurityFilterChain identitySecurity(HttpSecurity http, AccessTokenVerifier tokens) throws Exception {
         return http.csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .requestCache(cache -> cache.disable())

@@ -41,6 +41,19 @@ class CampaignDomainTests {
         assertThrows(CampaignFailure.class, () -> campaign.defineConditions(requirements(), deliverables(now.plusSeconds(3600)), now.plusSeconds(3600), cash(), now));
         assertEquals(original, campaign.requirements()); assertEquals(now.plusSeconds(7200), campaign.deliverables().get(0).deadline());
     }
+    @Test void closingRecordsOneEventPreservesConditionsAndCannotReopen() {
+        var campaign=draft();
+        assertEquals(CampaignFailure.Code.CAMPAIGN_NOT_OPEN,assertThrows(CampaignFailure.class,()->campaign.close(now)).code());
+        campaign.defineConditions(requirements(),deliverables(now.plusSeconds(7200)),now.plusSeconds(3600),cash(),now);
+        campaign.publish(now); campaign.pullDomainEvents(); var conditions=campaign.requirements();
+        assertThrows(NullPointerException.class,()->campaign.close(null)); assertEquals(CampaignStatus.OPEN,campaign.status());
+        campaign.close(now.plusSeconds(60)); campaign.close(now.plusSeconds(120));
+        assertEquals(CampaignStatus.CLOSED,campaign.status()); assertFalse(campaign.acceptsApplications(now.plusSeconds(60)));
+        assertEquals(conditions,campaign.requirements()); assertEquals(cash(),campaign.compensationTerms());
+        var events=campaign.pullDomainEvents(); assertEquals(1,events.size());
+        assertInstanceOf(com.collabtech.platform.campaign.domain.events.CampaignClosed.class,events.get(0));
+        assertThrows(CampaignFailure.class,()->campaign.publish(now)); assertThrows(CampaignFailure.class,campaign::requireDiscardable);
+    }
     @Test void expiredClosingDateIsRecheckedAtPublication() {
         var campaign = draft(); campaign.defineConditions(requirements(), deliverables(now.plusSeconds(7200)), now.plusSeconds(3600), cash(), now);
         assertThrows(CampaignFailure.class, () -> campaign.publish(now.plusSeconds(3600)));

@@ -22,13 +22,18 @@ class CampaignDiscoveryApplicationApiTests {
     @Autowired ObjectMapper json; @Autowired JdbcTemplate jdbc; @LocalServerPort int port;
     @Autowired com.collabtech.platform.campaign.domain.repositories.ApplicationRepository applications;
     @Autowired com.collabtech.platform.campaign.application.ports.CampaignUnitOfWork transactions;
+    @Autowired com.collabtech.platform.campaign.application.ports.IdempotentCommands idempotency;
     private final HttpClient client=HttpClient.newHttpClient();
     private record Result(int status,JsonNode body) {}
     private record Account(String token,String profileId) {}
     private record Fixture(Account brand,Account creator,String campaign,String requirement,String title) {}
     private Result call(String method,String path,String token,String body) throws Exception {
+        return call(method,path,token,body,null);
+    }
+    private Result call(String method,String path,String token,String body,String key) throws Exception {
         var request=HttpRequest.newBuilder(URI.create("http://localhost:"+port+path)).timeout(java.time.Duration.ofSeconds(30));
         if(token!=null) request.header("Authorization","Bearer "+token);
+        if(key!=null) request.header("Idempotency-Key",key);
         if(body!=null) request.header("Content-Type","application/json");
         request.method(method,body==null?HttpRequest.BodyPublishers.noBody():HttpRequest.BodyPublishers.ofString(body));
         var response=client.send(request.build(),HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
@@ -126,6 +131,60 @@ class CampaignDiscoveryApplicationApiTests {
         assertEquals(409,submit(f,true).status);
         var detail=call("GET","/api/v1/campaigns/"+f.campaign,f.creator.token,null);
         if(state.equals("DRAFT")) assertEquals(403,detail.status); else { assertEquals(200,detail.status); assertFalse(detail.body.path("acceptsApplications").asBoolean()); }
+        assertEquals(0,call("GET","/api/v1/campaigns?q="+enc(f.title),f.creator.token,null).body.path("total").asInt());
+        assertFalse(call("GET","/api/v1/campaigns/published?size=100",f.creator.token,null).body.toString().contains(f.campaign));
+        var own=call("GET","/api/v1/campaigns/mine",f.brand.token,null);
+        assertEquals(1,own.body.path("total").asInt()); assertFalse(own.body.path("items").path(0).path("acceptsApplications").asBoolean());
+    }
+    @Test void closingCampaignStopsNewApplicationsWithoutChangingExistingApplications() throws Exception {
+        var f=fixture(); String application=submit(f,true).body.path("id").asText();
+        var other=account("brands");
+        assertEquals(403,call("POST","/api/v1/campaigns/"+f.campaign+"/closure",other.token,null).status);
+        assertEquals(403,call("POST","/api/v1/campaigns/"+f.campaign+"/closure",f.creator.token,null).status);
+        var closed=call("POST","/api/v1/campaigns/"+f.campaign+"/closure",f.brand.token,null);
+        assertEquals(200,closed.status); assertEquals("CLOSED",closed.body.path("status").asText());
+        assertFalse(closed.body.path("acceptsApplications").asBoolean());
+        assertEquals(closed.body,call("POST","/api/v1/campaigns/"+f.campaign+"/closure",f.brand.token,null).body);
+        assertEquals("PENDING",call("GET","/api/v1/applications/"+application,f.creator.token,null).body.path("status").asText());
+        var newCreator=account("creators");
+        assertEquals(409,call("POST","/api/v1/campaigns/"+f.campaign+"/applications",newCreator.token,proposal(f,true)).status);
+        var draft=fixture("MANUAL_CONFIRMATION",null,true,false);
+        assertEquals(409,call("POST","/api/v1/campaigns/"+draft.campaign+"/closure",draft.brand.token,null).status);
+    }
+    @Test void applicationRetryReturnsOriginalResultAndDifferentIntentStillConflicts() throws Exception {
+        var f=fixture(); String key=UUID.randomUUID().toString(); String path="/api/v1/campaigns/"+f.campaign+"/applications";
+        var first=call("POST",path,f.creator.token,proposal(f,true),key); assertEquals(201,first.status);
+        var replay=call("POST",path,f.creator.token,proposal(f,true),key); assertEquals(201,replay.status); assertEquals(first.body,replay.body);
+        assertEquals(409,call("POST",path,f.creator.token,proposal(f,true).replace("Mi propuesta","Otra propuesta"),key).status);
+        assertEquals(409,call("POST",path,f.creator.token,proposal(f,true),UUID.randomUUID().toString()).status);
+        assertEquals(1,jdbc.queryForObject("select count(*) from campaign_application where campaign_id=?",Integer.class,f.campaign));
+        assertEquals(200,call("POST","/api/v1/campaigns/"+f.campaign+"/closure",f.brand.token,null).status);
+        assertEquals(first.body,call("POST",path,f.creator.token,proposal(f,true),key).body);
+    }
+    @Test void failedApplicationDoesNotConsumeRetryKey() throws Exception {
+        var f=fixture(); String key=UUID.randomUUID().toString(); String path="/api/v1/campaigns/"+f.campaign+"/applications";
+        assertEquals(422,call("POST",path,f.creator.token,proposal(f,false),key).status);
+        assertEquals(201,call("POST",path,f.creator.token,proposal(f,true),key).status);
+    }
+    @Test void concurrentApplicationRetriesCommitOneApplicationAndOneResult() throws Exception {
+        var f=fixture(); String key=UUID.randomUUID().toString(); var start=new CountDownLatch(1);
+        var pool=Executors.newFixedThreadPool(2);
+        Callable<Result> action=() -> { start.await(); return call("POST","/api/v1/campaigns/"+f.campaign+"/applications",f.creator.token,proposal(f,true),key); };
+        try {
+            var first=pool.submit(action); var second=pool.submit(action); start.countDown();
+            var a=first.get(20,TimeUnit.SECONDS); var b=second.get(20,TimeUnit.SECONDS);
+            assertEquals(201,a.status); assertEquals(201,b.status); assertEquals(a.body,b.body);
+            assertEquals(1,jdbc.queryForObject("select count(*) from campaign_application where campaign_id=?",Integer.class,f.campaign));
+        } finally { start.countDown(); pool.shutdownNow(); }
+    }
+    @Test void expiredIdempotencyRecordCanBeReusedAndCommandFailuresRollbackReservation() {
+        var actor=UUID.randomUUID(); var key=UUID.randomUUID().toString();
+        assertThrows(IllegalStateException.class,() -> idempotency.execute(actor,"TEST",key,"first",String.class,()-> { throw new IllegalStateException("rollback"); }));
+        assertEquals(0,jdbc.queryForObject("select count(*) from campaign_idempotent_command where actor_id=?",Integer.class,actor.toString()));
+        assertEquals("saved",idempotency.execute(actor,"TEST",key,"first",String.class,()->"saved"));
+        assertEquals("saved",idempotency.execute(actor,"TEST",key,"first",String.class,()-> { fail("Replay executed twice"); return null; }));
+        jdbc.update("update campaign_idempotent_command set expires_at=? where actor_id=?",Timestamp.from(Instant.now().minusSeconds(1)),actor.toString());
+        assertEquals("new result",idempotency.execute(actor,"TEST",key,"different",String.class,()->"new result"));
     }
     @ParameterizedTest @ValueSource(strings={"CANCELLED","SELECTED","REJECTED"})
     void terminalApplicationsCannotBeEditedOrCancelled(String state) throws Exception {

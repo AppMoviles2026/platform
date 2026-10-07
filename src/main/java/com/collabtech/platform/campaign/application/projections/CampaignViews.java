@@ -9,7 +9,7 @@ import java.util.UUID;
 public final class CampaignViews {
     private CampaignViews() {}
     public record Summary(UUID id, UUID brandId, String brandName, String title, String category,
-                          String location, CompensationTerms compensation, Instant applicationDeadline, String status) {}
+                          String location, CompensationTerms compensation, Instant applicationDeadline, String status, boolean acceptsApplications) {}
     public record Details(Summary summary, String objective, String description, String targetAudience,
                           List<Requirement> requirements, List<Deliverable> deliverables, boolean acceptsApplications, Instant publicationDate) {
         public Details { requirements = List.copyOf(requirements); deliverables = List.copyOf(deliverables); }

@@ -14,5 +14,6 @@ public final class IdentityViews {
     public record SessionView(AccountView account, String accessToken, String tokenType, Instant expiresAt) {
         @Override public String toString() { return "SessionView[accessToken=<redacted>]"; }
     }
-    public record AuthorizationView(URI authorizationUrl) {}
+    public record AuthorizationView(URI authorizationUrl, UUID authorizationId) {}
+    public record AuthorizationStatusView(UUID authorizationId, String platform, String status, String errorCode, Instant expiresAt) {}
 }

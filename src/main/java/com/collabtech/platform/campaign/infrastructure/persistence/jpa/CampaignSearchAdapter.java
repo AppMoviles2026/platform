@@ -18,7 +18,9 @@ public class CampaignSearchAdapter implements CampaignReadRepository {
     private final EntityManager em; private final CampaignCatalog catalog; private final Clock clock;
     public CampaignSearchAdapter(EntityManager em, CampaignCatalog catalog, Clock clock) { this.em = em; this.catalog = catalog; this.clock = clock; }
     public PageResult<CampaignViews.Summary> search(SearchCampaignsQuery query) {
-        var where = new StringBuilder("c.status = 'OPEN'"); var params = new LinkedHashMap<String,Object>();
+        var now = clock.instant();
+        var where = new StringBuilder("c.status = 'OPEN' and c.applicationDeadline > :now"); var params = new LinkedHashMap<String,Object>();
+        params.put("now", now);
         if (query.text() != null) {
             where.append(" and (lower(c.title) like :text escape '!' or lower(c.brandName) like :text escape '!' or lower(c.objective) like :text escape '!')");
             params.put("text", like(query.text()));
@@ -32,12 +34,13 @@ public class CampaignSearchAdapter implements CampaignReadRepository {
         long offset = (long)query.page().page() * query.page().size();
         if (offset > Integer.MAX_VALUE) throw new IllegalArgumentException("Page offset too large");
         var items = rows.setFirstResult((int)offset).setMaxResults(query.page().size()).getResultList().stream()
-                .map(row -> CampaignViewMapper.summary(CampaignPersistenceMapper.toDomain(row),row.brandName)).toList();
+                .map(row -> CampaignViewMapper.summary(CampaignPersistenceMapper.toDomain(row),row.brandName,now)).toList();
         return new PageResult<>(items,count.getSingleResult(),query.page().page(),query.page().size());
     }
     public PageResult<CampaignViews.Summary> findByBrand(GetBrandCampaignsQuery query) {
         var result = catalog.byBrand(query.brandId(),query.page());
-        return new PageResult<>(result.items().stream().map(item -> CampaignViewMapper.summary(item,catalog.brandName(item.id()))).toList(), result.total(), result.page(), result.size());
+        var now = clock.instant();
+        return new PageResult<>(result.items().stream().map(item -> CampaignViewMapper.summary(item,catalog.brandName(item.id()),now)).toList(), result.total(), result.page(), result.size());
     }
     public Optional<CampaignViews.Details> findDetails(GetCampaignDetailsQuery query) {
         return Optional.ofNullable(em.find(CampaignJpaEntity.class,query.campaignId().value().toString()))

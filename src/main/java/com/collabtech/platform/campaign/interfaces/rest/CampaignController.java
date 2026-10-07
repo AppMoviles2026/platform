@@ -26,8 +26,9 @@ public class CampaignController {
         return CampaignResources.page(discovery.search(actor.accountId(), q, category, location, compensationType, new PageRequest(page,size)));
     }
     @PostMapping
-    public ResponseEntity<CampaignResources.Details> create(@Valid @RequestBody CampaignRequests.Create body) {
-        var result = CampaignResources.details(service.create(actor.accountId(), body.title(), body.objective(), body.description(), body.category(), body.targetAudience(), body.location()));
+    public ResponseEntity<CampaignResources.Details> create(@Valid @RequestBody CampaignRequests.Create body,
+            @RequestHeader(name="Idempotency-Key",required=false) String key) {
+        var result = CampaignResources.details(service.create(actor.accountId(), body.title(), body.objective(), body.description(), body.category(), body.targetAudience(), body.location(), key));
         return ResponseEntity.created(URI.create("/api/v1/campaigns/" + result.id())).body(result);
     }
     @PutMapping("/{id}/conditions")
@@ -37,6 +38,12 @@ public class CampaignController {
     }
     @PostMapping("/{id}/publication")
     public CampaignResources.Details publish(@PathVariable UUID id) { return CampaignResources.details(service.publish(actor.accountId(), new CampaignId(id))); }
+    @PostMapping("/{id}/closure")
+    public CampaignResources.Details close(@PathVariable UUID id) { return CampaignResources.details(service.close(actor.accountId(), new CampaignId(id))); }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> discard(@PathVariable UUID id) {
+        service.discard(actor.accountId(), new CampaignId(id)); return ResponseEntity.noContent().build();
+    }
     @GetMapping("/{id}")
     public CampaignResources.Details own(@PathVariable UUID id) { return CampaignResources.details(discovery.details(actor.accountId(), new CampaignId(id))); }
     @GetMapping("/mine")

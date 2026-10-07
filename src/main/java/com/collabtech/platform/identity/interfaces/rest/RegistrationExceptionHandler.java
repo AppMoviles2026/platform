@@ -31,7 +31,8 @@ public class RegistrationExceptionHandler {
         return new ApiError("VALIDATION_ERROR", "Revisa los campos enviados.", fields);
     }
 
-    @ExceptionHandler({HttpMessageNotReadableException.class, IllegalArgumentException.class})
+    @ExceptionHandler({HttpMessageNotReadableException.class, IllegalArgumentException.class,
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiError invalidRequest() {
         return new ApiError("INVALID_REQUEST", "La solicitud no es válida.", Map.of());
@@ -43,6 +44,7 @@ public class RegistrationExceptionHandler {
             case INVALID_CREDENTIALS -> HttpStatus.UNAUTHORIZED;
             case CREATOR_REQUIRED, ACCOUNT_NOT_ACTIVE, AUTHORIZATION_DENIED -> HttpStatus.FORBIDDEN;
             case INVALID_RECOVERY_TOKEN, INVALID_OAUTH_STATE -> HttpStatus.BAD_REQUEST;
+            case AUTHORIZATION_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case PROVIDER_NOT_CONFIGURED -> HttpStatus.SERVICE_UNAVAILABLE;
             case PROVIDER_FAILED -> HttpStatus.BAD_GATEWAY;
         };
@@ -52,6 +54,7 @@ public class RegistrationExceptionHandler {
             case ACCOUNT_NOT_ACTIVE -> "La cuenta no está habilitada.";
             case INVALID_RECOVERY_TOKEN -> "El enlace de recuperación no es válido o ha vencido.";
             case INVALID_OAUTH_STATE -> "La autorización no es válida o ha vencido.";
+            case AUTHORIZATION_NOT_FOUND -> "La autorización no existe o no te pertenece.";
             case AUTHORIZATION_DENIED -> "No se concedió la autorización necesaria.";
             case PROVIDER_NOT_CONFIGURED -> "El proveedor de redes sociales aún no está configurado.";
             case PROVIDER_FAILED -> "No se pudo verificar la autorización con el proveedor.";

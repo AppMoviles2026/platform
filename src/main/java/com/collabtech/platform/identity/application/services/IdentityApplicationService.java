@@ -5,6 +5,8 @@ import com.collabtech.platform.identity.application.handlers.RegisterBrandComman
 import com.collabtech.platform.identity.application.handlers.RegisterCreatorCommandHandler;
 import com.collabtech.platform.identity.application.ports.*;
 import com.collabtech.platform.identity.application.projections.IdentityViews;
+import com.collabtech.platform.identity.application.projections.SocialAuthorizationCompletion;
+import com.collabtech.platform.identity.domain.exceptions.DuplicateSocialAccountException;
 import com.collabtech.platform.identity.application.queries.*;
 import com.collabtech.platform.identity.application.exceptions.IdentityFailure;
 import com.collabtech.platform.identity.domain.model.aggregates.Account;
@@ -68,28 +70,48 @@ public final class IdentityApplicationService implements IdentityCommandService,
     public IdentityViews.AuthorizationView handle(StartSocialAuthorizationCommand command) {
         return unitOfWork.execute(() -> {
             creator(command.accountId());
-            String state = states.create(command.accountId(), command.platform());
-            return new IdentityViews.AuthorizationView(social.authorizationUri(command.platform(), state));
+            var pending = states.create(command.accountId(), command.platform(), command.client());
+            return new IdentityViews.AuthorizationView(social.authorizationUri(command.platform(), pending.state()), pending.authorizationId());
         });
     }
 
     public IdentityViews.SocialAccountView handle(CompleteSocialAuthorizationCommand command) {
+        var result = completeSocialAuthorization(command);
+        if (result.failure() != null) throw result.failure();
+        return result.socialAccount();
+    }
+
+    public SocialAuthorizationCompletion completeSocialAuthorization(CompleteSocialAuthorizationCommand command) {
         // Consume independently: denial, duplicate or failed provider calls cannot make a state replayable.
         var authorization = states.consume(command.state(), command.platform());
-        if (command.providerError() != null) throw new IdentityFailure(IdentityFailure.Code.AUTHORIZATION_DENIED);
-        if (command.authorizationCode() == null || command.authorizationCode().isBlank()) {
-            throw new IdentityFailure(IdentityFailure.Code.AUTHORIZATION_DENIED);
+        try {
+            if (command.providerError() != null || command.authorizationCode() == null || command.authorizationCode().isBlank()) {
+                throw new IdentityFailure(IdentityFailure.Code.AUTHORIZATION_DENIED);
+            }
+            var result = unitOfWork.execute(() -> {
+                var account = creator(authorization.owner());
+                var approved = social.exchangeCode(authorization.platform(), command.authorizationCode());
+                var linked = new SocialMediaAccount(new SocialMediaAccountId(UUID.randomUUID()), authorization.platform(),
+                        approved.externalAccountId(), approved.username(), SocialAccountStatus.ACTIVE);
+                account.linkSocialAccount(linked);
+                accounts.save(account);
+                social.attachCredentials(approved.credentialReceipt(), linked.id());
+                states.finish(authorization.authorizationId(), "SUCCEEDED", null);
+                return socialView(linked);
+            });
+            return new SocialAuthorizationCompletion(authorization, result, null);
+        } catch (RuntimeException failure) {
+            String code = failure instanceof IdentityFailure identityFailure ? identityFailure.code().name()
+                    : failure instanceof DuplicateSocialAccountException ? "SOCIAL_ACCOUNT_ALREADY_LINKED" : "PROVIDER_FAILED";
+            states.finish(authorization.authorizationId(), "FAILED", code);
+            RuntimeException sanitized = failure instanceof IdentityFailure || failure instanceof DuplicateSocialAccountException
+                    ? failure : new IdentityFailure(IdentityFailure.Code.PROVIDER_FAILED);
+            return new SocialAuthorizationCompletion(authorization, null, sanitized);
         }
-        return unitOfWork.execute(() -> {
-            var account = creator(authorization.owner());
-            var approved = social.exchangeCode(authorization.platform(), command.authorizationCode());
-            var linked = new SocialMediaAccount(new SocialMediaAccountId(UUID.randomUUID()), authorization.platform(),
-                    approved.externalAccountId(), approved.username(), SocialAccountStatus.ACTIVE);
-            account.linkSocialAccount(linked);
-            accounts.save(account);
-            social.attachCredentials(approved.credentialReceipt(), linked.id());
-            return socialView(linked);
-        });
+    }
+
+    public IdentityViews.AuthorizationStatusView authorizationStatus(AccountId owner, UUID id) {
+        return unitOfWork.execute(() -> { creator(owner); return states.find(id, owner); });
     }
 
     public IdentityViews.AccountView handle(GetCurrentAccountQuery query) {

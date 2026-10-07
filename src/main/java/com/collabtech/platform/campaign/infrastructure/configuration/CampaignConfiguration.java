@@ -19,15 +19,15 @@ public class CampaignConfiguration {
         return new CampaignDiscoveryService(actors, transactions, reads, preparation);
     }
     @Bean ApplicationManagementService applicationManagementService(CampaignActorGateway actors, CampaignUnitOfWork transactions,
-            CampaignRepository campaigns, ApplicationRepository applications, ApplicationReadRepository reads, Clock clock) {
-        return new ApplicationManagementService(actors, transactions, campaigns, applications, reads, new ExplicitApplicationEligibilityService(), clock);
+            CampaignRepository campaigns, ApplicationRepository applications, ApplicationReadRepository reads, Clock clock, IdempotentCommands idempotency) {
+        return new ApplicationManagementService(actors, transactions, campaigns, applications, reads, new ExplicitApplicationEligibilityService(), clock, idempotency);
     }
     @Bean CampaignUnitOfWork campaignUnitOfWork(PlatformTransactionManager manager) {
         var template = new TransactionTemplate(manager);
         return new CampaignUnitOfWork() { public <T> T execute(Supplier<T> work) { return template.execute(status -> work.get()); } };
     }
     @Bean CampaignPreparationService campaignPreparationService(CampaignActorGateway actors, CampaignUnitOfWork transactions,
-            CampaignRepository campaigns, CampaignCatalog catalog, Clock clock) {
-        return new CampaignPreparationService(actors, transactions, campaigns, catalog, clock);
+            CampaignRepository campaigns, CampaignCatalog catalog, Clock clock, IdempotentCommands idempotency) {
+        return new CampaignPreparationService(actors, transactions, campaigns, catalog, clock, idempotency);
     }
 }

@@ -15,10 +15,12 @@ public final class ApplicationManagementService {
     private final CampaignActorGateway actors; private final CampaignUnitOfWork transactions;
     private final ApplicationRepository applications; private final ApplicationReadRepository reads;
     private final SubmitApplicationCommandHandler submit;
+    private final IdempotentCommands idempotency;
     public ApplicationManagementService(CampaignActorGateway actors,CampaignUnitOfWork transactions,CampaignRepository campaigns,
-            ApplicationRepository applications,ApplicationReadRepository reads,ApplicationEligibilityService eligibility,Clock clock) {
+            ApplicationRepository applications,ApplicationReadRepository reads,ApplicationEligibilityService eligibility,Clock clock,IdempotentCommands idempotency) {
         this.actors=actors; this.transactions=transactions; this.applications=applications; this.reads=reads;
         this.submit=new SubmitApplicationCommandHandler(campaigns,applications,eligibility,clock);
+        this.idempotency=idempotency;
     }
     public CampaignViews.ApplicationView submit(UUID account,CampaignId campaign,String message,Set<UUID> confirmations) {
         return transactions.execute(() -> {
@@ -26,6 +28,11 @@ public final class ApplicationManagementService {
             var id=submit.handle(new SubmitApplicationCommand(creator.id(),campaign,message,confirmations.stream().map(RequirementId::new).collect(java.util.stream.Collectors.toSet()),creator.facts()));
             return detail(creator.id(),id);
         });
+    }
+    public CampaignViews.ApplicationView submit(UUID account,CampaignId campaign,String message,Set<UUID> confirmations,String key) {
+        var sorted = confirmations.stream().map(UUID::toString).sorted().collect(java.util.stream.Collectors.joining(","));
+        return idempotency.execute(account,"SUBMIT_APPLICATION:"+campaign.value(),key,RequestFingerprint.of(message,sorted),
+                CampaignViews.ApplicationView.class,() -> submit(account,campaign,message,confirmations));
     }
     public CampaignViews.ApplicationView update(UUID account,ApplicationId id,String message,Long version) {
         return transactions.execute(() -> {
