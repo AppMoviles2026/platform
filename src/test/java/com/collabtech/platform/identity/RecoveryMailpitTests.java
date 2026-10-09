@@ -42,7 +42,13 @@ class RecoveryMailpitTests {
         }
         assertEquals(1, jdbc.queryForObject("select count(*) from identity_recovery_mail where email=? and sent_at is not null and encrypted_token is null", Integer.class, email));
         var client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
-        String base = "http://localhost:8025/api/v1/";
+        String configured = System.getenv("COLLABPRO_TEST_MAILPIT_URL");
+        URI mailpit = URI.create(configured == null ? "http://localhost:8025" : configured);
+        assertEquals("http", mailpit.getScheme());
+        assertTrue(java.util.Set.of("localhost", "127.0.0.1", "[::1]").contains(mailpit.getHost()), "Mailpit test must remain on loopback");
+        assertNull(mailpit.getUserInfo()); assertNull(mailpit.getQuery()); assertNull(mailpit.getFragment());
+        assertTrue(mailpit.getPath().isEmpty() || mailpit.getPath().equals("/"));
+        String base = mailpit.toString().replaceAll("/$", "") + "/api/v1/";
         var response = client.send(HttpRequest.newBuilder(URI.create(base + "messages?limit=200")).timeout(Duration.ofSeconds(10)).GET().build(), HttpResponse.BodyHandlers.ofString());
         assertEquals(200, response.statusCode());
         String id = null;

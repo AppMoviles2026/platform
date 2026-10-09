@@ -22,5 +22,32 @@ services:
       timeout: 5s
       retries: 20
       start_period: 30s
+  platform:
+    image: collabpro-platform:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:${PLATFORM_PORT:-8081}:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SERVER_PORT: "8081"
+      MYSQL_URL: "jdbc:mysql://mysql:3306/collabpro?connectionTimeZone=UTC"
+      MYSQL_USER: collabpro
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-collabpro-local-only}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      INSTAGRAM_CLIENT_ID: ${INSTAGRAM_CLIENT_ID:-}
+      INSTAGRAM_CLIENT_SECRET: ${INSTAGRAM_CLIENT_SECRET:-}
+      INSTAGRAM_REDIRECT_URI: ${INSTAGRAM_REDIRECT_URI:-}
+      TIKTOK_CLIENT_KEY: ${TIKTOK_CLIENT_KEY:-}
+      TIKTOK_CLIENT_SECRET: ${TIKTOK_CLIENT_SECRET:-}
+      TIKTOK_REDIRECT_URI: ${TIKTOK_REDIRECT_URI:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    init: true
 volumes:
   collabpro-mysql-data:

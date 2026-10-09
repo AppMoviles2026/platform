@@ -246,6 +246,11 @@ class IdentityLifecycleApiTests {
                 .andExpect(status().isBadRequest()).andExpect(header().doesNotExist("Location"));
         mvc.perform(get("/api/v1/social-accounts/authorizations/"+id).header("Authorization","Bearer "+owner))
                 .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+        verify(social, times(1)).exchangeCode(any(), eq("approved"));
+        mvc.perform(get("/api/v1/social-accounts/me").header("Authorization", "Bearer " + owner))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].username").value("creator-name"))
+                .andExpect(jsonPath("$[0].accessToken").doesNotExist());
     }
     @Test void androidDenialAndDuplicateArePersistedWithoutReturningProviderSecrets() throws Exception {
         String owner = token(register("creators"));

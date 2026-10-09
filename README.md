@@ -4,16 +4,27 @@ Base de backend Spring Boot/Java para preparar las primeras 18 **posiciones del 
 
 ## Ejecución y pruebas
 
-Requiere Java 17 o superior. El perfil predeterminado `local` utiliza MySQL en `localhost:3307` y Mailpit para correo local.
+Se recomienda Docker Desktop para iniciar la API, MySQL y Mailpit juntos desde esta carpeta:
 
 ```powershell
-docker compose up -d
-.\mvnw.cmd spring-boot:run
-# Pruebas aisladas: H2 en modo MySQL, sin Docker ni credenciales de proveedores.
-.\mvnw.cmd test
+docker compose up --build -d
+docker compose ps
 ```
 
-Flyway aplica las migraciones al iniciar. V1–V5 se conservan intactas; V6 añade resultados OAuth y V7 el registro de reintentos. No es necesario borrar la base de datos existente.
+El primer comando construye la imagen Spring Boot y levanta los tres servicios. La API queda en `http://localhost:8081/api/v1/` y Mailpit en `http://localhost:8025`. Flyway aplica las migraciones al iniciar; MySQL conserva los datos en un volumen Docker. Para detener los servicios sin borrar la base, ejecuta `docker compose stop`; evita `docker compose down -v` si deseas conservarla.
+
+El emulador Android usa `http://10.0.2.2:8081/api/v1/`, que dirige la app a la API en la PC. Los puertos de MySQL y Mailpit solo se publican en loopback; el API local también queda en loopback. Instagram/TikTok requieren credenciales externas y no se configuran por defecto. Si se usan, proporciona sus variables en el entorno o en un `.env` local, que no debe subirse al repositorio.
+
+Para arrancar únicamente MySQL/Mailpit y ejecutar Spring con Maven fuera de Docker, se requiere Java 17 o superior:
+
+```powershell
+docker compose up -d mysql mailpit
+.\mvnw.cmd spring-boot:run '-Dspring-boot.run.arguments=--server.port=8081'
+```
+
+Las pruebas automatizadas usan H2 en modo MySQL y no requieren Docker ni credenciales de proveedores: `.\mvnw.cmd test`.
+
+Flyway conserva las migraciones V1–V5; V6 añade resultados OAuth y V7 el registro de reintentos. No es necesario borrar una base existente.
 
 ## Autenticación JWT
 
@@ -72,5 +83,7 @@ Los errores persistidos se limitan a códigos internos, como `AUTHORIZATION_DENI
 Se mantienen las capacidades de US-09, US-10, US-11, US-13, US-14, US-15, US-16, US-17, US-18 y US-19 dentro de las primeras 18 posiciones ordenadas. No se adelantan US-12 (perfil empresarial completo), US-20 (evaluación de postulantes) ni colaboraciones, pagos, métricas o APIs generales de historias posteriores. La aplicación Android no se integra en esta intervención.
 
 Las pruebas cubren contratos REST con filtros reales, JWT inválidos/vencidos/revocados, permisos, recuperación, resultados OAuth, publicación/condiciones, disponibilidad, descarte/cierre y concurrencia/reintentos. La prueba opcional de correo real requiere Mailpit y `COLLABPRO_TEST_MAILPIT=true`. Las pruebas OAuth utilizan un proveedor de prueba; no certifican aprobación ni credenciales de Instagram/TikTok en producción.
+
+Actualización de validación del 8 de octubre de 2026: `mvnw.cmd test` aprobó **144 pruebas, sin fallos, errores ni omisiones**, incluyendo SMTP real a Mailpit aislado. Para cambiar su puerto en pruebas se admite `COLLABPRO_TEST_MAILPIT_URL` (solo loopback; predeterminado `http://localhost:8025`) junto a `SMTP_HOST`/`SMTP_PORT`. La prueba de retorno Android comprueba un único intercambio aunque se repita el callback y que la lista resultante no exponga tokens. Los recorridos HTTP del móvil se ejecutaron adicionalmente contra MySQL 8.4 aislado; su matriz E01–E26 y límites se documentan en `C:/Users/fabio/AndroidStudioProjects/CollabPro/docs/VINCULACION_SOCIAL_Y_VALIDACION_V1.md`. Esta actualización solo modificó pruebas/documentación del backend, no sus contratos ni reglas de negocio.
 
 Verificación local del 6 de octubre de 2026: `mvnw.cmd package` terminó correctamente, con 143 pruebas aprobadas y 1 omitida (correo real/Mailpit), sin fallos ni errores. Incluye actualización de una base V5 a V7 y validación de límites DDD. Se generó `target/platform-0.0.1-SNAPSHOT.jar`. No se verificó contra MySQL real porque Docker estaba detenido; el esquema y los flujos se comprobaron con H2 en modo MySQL.
