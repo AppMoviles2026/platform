@@ -1,89 +1,63 @@
-# CollabPro Platform — base DDD
+# CollabPro Platform
 
-Base de backend Spring Boot/Java para preparar las primeras 18 **posiciones del Product Backlog** del reporte.
+Backend REST de CollabPro con Spring Boot, Java 21, MySQL y arquitectura DDD por bounded context.
 
-## Ejecución y pruebas
+## Ejecutar localmente
 
-Se recomienda Docker Desktop para iniciar la API, MySQL y Mailpit juntos desde esta carpeta:
+Requiere Docker Desktop. Desde esta carpeta:
 
 ```powershell
 docker compose up --build -d
 docker compose ps
 ```
 
-El primer comando construye la imagen Spring Boot y levanta los tres servicios. La API queda en `http://localhost:8081/api/v1/` y Mailpit en `http://localhost:8025`. Flyway aplica las migraciones al iniciar; MySQL conserva los datos en un volumen Docker. Para detener los servicios sin borrar la base, ejecuta `docker compose stop`; evita `docker compose down -v` si deseas conservarla.
+- API: `http://localhost:8081/api/v1/`
+- Emulador Android: `http://10.0.2.2:8081/api/v1/`
+- Mailpit: `http://localhost:8025`
+- Detener sin borrar la base: `docker compose stop`
 
-El emulador Android usa `http://10.0.2.2:8081/api/v1/`, que dirige la app a la API en la PC. Los puertos de MySQL y Mailpit solo se publican en loopback; el API local también queda en loopback. Instagram/TikTok requieren credenciales externas y no se configuran por defecto. Si se usan, proporciona sus variables en el entorno o en un `.env` local, que no debe subirse al repositorio.
+MySQL guarda sus datos en un volumen. No uses `docker compose down -v` salvo que quieras borrarlos.
 
-Para arrancar únicamente MySQL/Mailpit y ejecutar Spring con Maven fuera de Docker, se requiere Java 17 o superior:
+## Cuentas de demostración
+
+Compose carga automáticamente datos de ejemplo: 1 marca, 2 creadores, 4 campañas publicadas, 1 borrador y 3 postulaciones. El seed es idempotente: no duplica ni sobrescribe datos existentes.
+
+| Rol | Correo |
+|---|---|
+| Marca | `demo.brand@collabpro.app` |
+| Creadora | `demo.creator@collabpro.app` |
+| Creador | `demo.creator2@collabpro.app` |
+
+Contraseña local: `CollabProDemo2026!`. Para cambiarla antes del primer inicio, define `DEMO_SEED_PASSWORD`. Las cuentas de demostración no deben habilitarse en producción pública.
+
+## API principal
+
+Las rutas protegidas requieren `Authorization: Bearer <JWT>`. Inicia sesión en `POST /auth/sessions`.
+
+| Área | Rutas bajo `/api/v1` |
+|---|---|
+| Cuenta y acceso | `POST /auth/brands`, `/auth/creators`, `/auth/sessions`, `/auth/recovery-requests`, `/auth/password-resets`; `GET /accounts/me` |
+| Perfil creador | `GET, PUT /profiles/me/creator` |
+| Campañas | `GET, POST /campaigns`; `GET /campaigns/{id}`; `GET /campaigns/mine`, `/campaigns/published`; condiciones, publicación, cierre y descarte por campaña |
+| Postulaciones | `POST /campaigns/{id}/applications`; `GET /applications/mine`, `/applications/{id}`; `PUT /applications/{id}`; `POST /applications/{id}/cancellation` |
+| Redes sociales | `POST /social-accounts/{platform}/authorizations`; `GET /social-accounts/{platform}/callback`, `/social-accounts/authorizations/{authorizationId}`, `/social-accounts/me` |
+
+Para creación y detalle de contratos, consulta los controladores REST en `src/main/java/com/collabtech/platform`. Las migraciones de esquema están en `src/main/resources/db/migration`.
+
+## Despliegue
+
+El seed se activa en Compose local y está apagado por defecto fuera de Compose. En un entorno cloud de demostración, configura:
+
+- `COLLABPRO_DEMO_SEED_ENABLED=true`
+- `DEMO_SEED_PASSWORD` como secreto (mínimo 12 caracteres; se usa al crear las cuentas por primera vez)
+- `SPRING_PROFILES_ACTIVE=prod`, conexión MySQL (`MYSQL_URL`, `MYSQL_USER`, `MYSQL_PASSWORD`), `JWT_SECRET` e `IDENTITY_ENCRYPTION_KEY`
+
+Genera claves distintas y aleatorias para JWT y cifrado; no uses valores locales ni los subas al repositorio. Configura credenciales OAuth de Instagram/TikTok solo si habilitarás esa integración (`INSTAGRAM_*`, `TIKTOK_*`).
+
+## Desarrollo
 
 ```powershell
-docker compose up -d mysql mailpit
-.\mvnw.cmd spring-boot:run '-Dspring-boot.run.arguments=--server.port=8081'
+.\mvnw.cmd test
 ```
 
-Las pruebas automatizadas usan H2 en modo MySQL y no requieren Docker ni credenciales de proveedores: `.\mvnw.cmd test`.
-
-Flyway conserva las migraciones V1–V5; V6 añade resultados OAuth y V7 el registro de reintentos. No es necesario borrar una base existente.
-
-## Autenticación JWT
-
-`POST /api/v1/auth/sessions` mantiene los campos `account`, `accessToken`, `tokenType="Bearer"` y `expiresAt`; ahora `accessToken` es un **JWT firmado con HS256**, no una cadena opaca. Los registros de empresa/creador siguen devolviendo la cuenta sin iniciar sesión automáticamente.
-
-Enviar `Authorization: Bearer <accessToken>` en las rutas protegidas. El servidor valida firma, algoritmo, emisor, audiencia, vencimiento, fecha de emisión, inicio de validez, identificador de token y sujeto. También comprueba que la sesión siga registrada y que la cuenta esté activa y conserve el rol firmado. Los claims incluyen `iss`, `sub` (AccountId, no ProfileId), `aud`, `iat`, `nbf`, `exp`, `jti` y `role`; no incluyen correo, contraseña ni tokens de redes sociales.
-
-El registro de sesiones guarda únicamente el hash SHA-256 del JWT. Restablecer la contraseña revoca las sesiones anteriores, incluso si sus JWT aún no han vencido. Los tokens opacos emitidos antes de este cambio ya no son válidos: hay que volver a iniciar sesión. No se añade refresh token ni un servidor de autorización propio. Logout remoto continúa pendiente; el cliente puede borrar su credencial localmente.
-
-| Variable | Uso |
-|---|---|
-| `JWT_SECRET` | Clave aleatoria de al menos 32 bytes, codificada en Base64; obligatoria fuera de `local`/pruebas |
-| `JWT_ISSUER` | Emisor esperado; predeterminado `collabpro-platform` |
-| `JWT_AUDIENCE` | Audiencia esperada; predeterminado `collabpro-clients` |
-| `JWT_TTL_SECONDS` | Duración; predeterminado 3600, permitido 60–86400 |
-
-En `local` y pruebas hay una clave pública **solo de desarrollo**, distinta de la clave de cifrado de credenciales. Para despliegue, seleccionar explícitamente un perfil no local y configurar datasource, `IDENTITY_ENCRYPTION_KEY` y `JWT_SECRET` mediante secretos del entorno. Nunca copiar la clave de firma a Android/web ni registrarla en Git. Cambiar la clave invalida los JWT previos. Utilizar HTTPS fuera del desarrollo local.
-
-La emisión y validación quedan detrás de `AccessTokenProvider` y `AccessTokenVerifier` en Application; Spring Security/Nimbus y el registro revocable pertenecen a Infrastructure. Se utiliza [el soporte JWT oficial de Spring Security](https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/jwt.html).
-
-## Ajustes de campañas dentro de V1
-
-`GET /api/v1/campaigns` y `GET /api/v1/campaigns/published` muestran solo campañas `OPEN` cuya fecha límite sea futura; el total paginado usa el mismo instante que la consulta. Los resúmenes incluyen `acceptsApplications`, al igual que el detalle. Las vencidas permanecen consultables por ID, sin cambiar su estado como efecto de una lectura.
-
-| Operación nueva | Permisos y comportamiento |
-|---|---|
-| `DELETE /api/v1/campaigns/{id}` | Empresa propietaria, únicamente `DRAFT` sin postulaciones; elimina también requisitos/entregables del borrador; devuelve 204 |
-| `POST /api/v1/campaigns/{id}/closure` | Empresa propietaria, `OPEN` → `CLOSED`; repetir sobre `CLOSED` devuelve el mismo detalle; borrador/cancelada producen 409 |
-
-El cierre comparte bloqueo de campaña con la postulación, impide nuevas postulaciones y **no** selecciona, rechaza ni cancela las existentes. No hay reapertura, edición genérica de metadatos, cancelación en cascada ni eliminación de campañas publicadas. Las condiciones publicadas siguen congeladas y la política existente de no volver a postular tras cancelar se conserva.
-
-## Reintentos seguros
-
-Las operaciones `POST /api/v1/campaigns` y `POST /api/v1/campaigns/{id}/applications` aceptan la cabecera opcional `Idempotency-Key`. Se recomienda un UUID nuevo para cada intención del usuario; repetir exactamente la misma intención con la misma clave ante una respuesta perdida.
-
-- Misma cuenta, operación, clave y contenido: devuelve la respuesta original (201, Location y cuerpo), sin crear otro recurso; también serializa solicitudes simultáneas.
-- Misma clave con contenido distinto: 409 `IDEMPOTENCY_KEY_REUSED`.
-- La clave está aislada por cuenta y operación; para postulaciones, también por campaña. El orden de confirmaciones no altera su huella.
-- Persistencia de cambios y resultado en una sola transacción: los fallos no consumen la clave. La respuesta guardada es una instantánea del resultado original, no una nueva consulta del recurso.
-- Protección de 24 horas; al vencer puede reutilizarse la clave. El vencimiento no elimina la restricción de postulación duplicada. Las claves aceptan 8–128 caracteres alfanuméricos o `._:-`; cabecera inválida devuelve 400. Clientes sin cabecera mantienen el comportamiento previo.
-
-## Vinculación OAuth y retorno a Android
-
-La configuración de Instagram/TikTok sigue requiriendo credenciales reales y callback HTTPS registrado en el proveedor (`INSTAGRAM_CLIENT_ID`, `INSTAGRAM_CLIENT_SECRET`, `INSTAGRAM_REDIRECT_URI`; `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI`). Sin configuración, iniciar una autorización devuelve 503 `PROVIDER_NOT_CONFIGURED`, no una vinculación simulada.
-
-1. `POST /api/v1/social-accounts/{platform}/authorizations?client=ANDROID`, con JWT de creador, devuelve `authorizationUrl` y `authorizationId`. Sin `client` se conserva el canal `API` y su callback JSON.
-2. El cliente abre la URL del proveedor; este responde al callback HTTPS del backend. El estado aleatorio expira a los 10 minutos y es de un solo uso incluso con rechazo, duplicado o fallo.
-3. Un callback Android reconocido termina con 303 hacia `collabpro://social-authorization-completed?authorizationId=<UUID>`, tanto en éxito como en fallo reconocido. No contiene códigos, estado, JWT ni tokens del proveedor. No se acepta una URL de retorno proporcionada por el usuario; un estado inválido/vencido/reutilizado no redirige.
-4. `GET /api/v1/social-accounts/authorizations/{authorizationId}`, con JWT del creador propietario, devuelve `authorizationId`, `platform`, `status`, `errorCode` y `expiresAt`. Estados: `PENDING`, `SUCCEEDED`, `FAILED`, `EXPIRED`. Otro propietario obtiene 404; empresa obtiene 403.
-5. El cliente consulta el resultado y recarga `/api/v1/social-accounts/me` para mostrar vínculos confirmados. Regresar del navegador no equivale por sí solo a vinculación exitosa.
-
-Los errores persistidos se limitan a códigos internos, como `AUTHORIZATION_DENIED`, `SOCIAL_ACCOUNT_ALREADY_LINKED` o `PROVIDER_FAILED`. Éxito y vínculo se confirman en la misma transacción. Repetir el callback no cambia un resultado terminal ni permite reutilizar el estado.
-
-## Alcance y verificación
-
-Se mantienen las capacidades de US-09, US-10, US-11, US-13, US-14, US-15, US-16, US-17, US-18 y US-19 dentro de las primeras 18 posiciones ordenadas. No se adelantan US-12 (perfil empresarial completo), US-20 (evaluación de postulantes) ni colaboraciones, pagos, métricas o APIs generales de historias posteriores. La aplicación Android no se integra en esta intervención.
-
-Las pruebas cubren contratos REST con filtros reales, JWT inválidos/vencidos/revocados, permisos, recuperación, resultados OAuth, publicación/condiciones, disponibilidad, descarte/cierre y concurrencia/reintentos. La prueba opcional de correo real requiere Mailpit y `COLLABPRO_TEST_MAILPIT=true`. Las pruebas OAuth utilizan un proveedor de prueba; no certifican aprobación ni credenciales de Instagram/TikTok en producción.
-
-Actualización de validación del 8 de octubre de 2026: `mvnw.cmd test` aprobó **144 pruebas, sin fallos, errores ni omisiones**, incluyendo SMTP real a Mailpit aislado. Para cambiar su puerto en pruebas se admite `COLLABPRO_TEST_MAILPIT_URL` (solo loopback; predeterminado `http://localhost:8025`) junto a `SMTP_HOST`/`SMTP_PORT`. La prueba de retorno Android comprueba un único intercambio aunque se repita el callback y que la lista resultante no exponga tokens. Los recorridos HTTP del móvil se ejecutaron adicionalmente contra MySQL 8.4 aislado; su matriz E01–E26 y límites se documentan en `C:/Users/fabio/AndroidStudioProjects/CollabPro/docs/VINCULACION_SOCIAL_Y_VALIDACION_V1.md`. Esta actualización solo modificó pruebas/documentación del backend, no sus contratos ni reglas de negocio.
-
-Verificación local del 6 de octubre de 2026: `mvnw.cmd package` terminó correctamente, con 143 pruebas aprobadas y 1 omitida (correo real/Mailpit), sin fallos ni errores. Incluye actualización de una base V5 a V7 y validación de límites DDD. Se generó `target/platform-0.0.1-SNAPSHOT.jar`. No se verificó contra MySQL real porque Docker estaba detenido; el esquema y los flujos se comprobaron con H2 en modo MySQL.
+Para ejecutar Spring fuera de Docker, inicia primero MySQL y Mailpit con `docker compose up -d mysql mailpit` y luego `.\mvnw.cmd spring-boot:run`.

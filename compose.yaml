@@ -32,6 +32,8 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: local
       SERVER_PORT: "8081"
+      COLLABPRO_DEMO_SEED_ENABLED: ${COLLABPRO_DEMO_SEED_ENABLED:-true}
+      DEMO_SEED_PASSWORD: "${DEMO_SEED_PASSWORD:-CollabProDemo2026!}"
       MYSQL_URL: "jdbc:mysql://mysql:3306/collabpro?connectionTimeZone=UTC"
       MYSQL_USER: collabpro
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-collabpro-local-only}
