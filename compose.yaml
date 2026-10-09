@@ -28,7 +28,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "127.0.0.1:${PLATFORM_PORT:-8081}:8081"
+      - "${PLATFORM_PORT:-8081}:8081"
     environment:
       SPRING_PROFILES_ACTIVE: local
       SERVER_PORT: "8081"
