@@ -12,6 +12,7 @@ docker compose ps
 ```
 
 - API: `http://localhost:8081/api/v1/`
+- Swagger: `http://localhost:8081/swagger-ui/index.html`
 - Emulador Android: `http://10.0.2.2:8081/api/v1/`
 - Mailpit: `http://localhost:8025`
 - Detener sin borrar la base: `docker compose stop`
@@ -33,6 +34,8 @@ Contraseña local: `CollabProDemo2026!`. Para cambiarla antes del primer inicio,
 ## API principal
 
 Las rutas protegidas requieren `Authorization: Bearer <JWT>`. Inicia sesión en `POST /auth/sessions`.
+
+En Swagger, ejecuta `POST /api/v1/auth/sessions` con una cuenta demo, copia `accessToken` y pégalo en **Authorize** (sin escribir `Bearer`). Luego puedes usar **Try it out** en las rutas protegidas. El contrato OpenAPI está en `/v3/api-docs`.
 
 | Área | Rutas bajo `/api/v1` |
 |---|---|
