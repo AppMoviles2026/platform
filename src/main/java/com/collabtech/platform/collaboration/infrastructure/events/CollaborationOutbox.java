@@ -13,7 +13,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
-public final class CollaborationOutbox implements Events {
+public final class CollaborationOutbox implements Events, com.collabtech.platform.collaboration.application.ports.DeliveryPorts.DeliveryEvents {
     private final JdbcTemplate jdbc;private final ObjectMapper json;private final Clock clock;private final TransactionTemplate tx;
     public CollaborationOutbox(JdbcTemplate jdbc,ObjectMapper json,Clock clock,PlatformTransactionManager manager){
         this.jdbc=jdbc;this.json=json;this.clock=clock;tx=new TransactionTemplate(manager);tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -21,6 +21,11 @@ public final class CollaborationOutbox implements Events {
     }
     public void append(UUID id,String type,AgreementSnapshot terms,Instant now){
         jdbc.update("insert into collaboration_outbox(event_id,aggregate_id,event_type,payload,occurred_at) values(?,?,?,?,?)",UUID.randomUUID().toString(),id.toString(),type,json.writeValueAsString(terms),Timestamp.from(now));
+    }
+    public void append(com.collabtech.platform.collaboration.domain.model.DeliveryEvent event) {
+        jdbc.update("insert into collaboration_outbox(event_id,aggregate_id,event_type,payload,occurred_at) values(?,?,?,?,?)",
+                event.eventId().toString(), event.collaborationId().toString(), event.type(),
+                json.writeValueAsString(event.type().startsWith("Collaboration") ? event.snapshot() : event), Timestamp.from(event.occurredAt()));
     }
     public void dispatch(List<CollaborationEventConsumer> consumers){
         var names=new HashSet<String>();for(var c:consumers){if(c.consumerName()==null||!c.consumerName().matches("[a-z][a-z0-9.-]{1,63}")||!names.add(c.consumerName()))throw new IllegalArgumentException("Invalid/duplicate consumer name");}

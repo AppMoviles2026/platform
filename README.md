@@ -21,7 +21,7 @@ MySQL guarda sus datos en un volumen. No uses `docker compose down -v` salvo que
 
 ## Cuentas de demostración
 
-Compose carga automáticamente datos de ejemplo: 1 marca, 2 creadores, 4 campañas publicadas, 1 borrador y 5 postulaciones (3 pendientes y 2 evaluadas). También crea un acuerdo aceptado y una colaboración activa entre la marca y `demo.creator2@collabpro.app`. El seed es idempotente: no duplica ni sobrescribe datos existentes.
+Compose carga automáticamente datos de ejemplo: 1 marca, 2 creadores, 4 campañas publicadas, 1 borrador y 5 postulaciones (3 pendientes y 2 evaluadas). También crea un acuerdo aceptado entre la marca y `demo.creator2@collabpro.app`, con una entrega corregida pendiente de revisión y su rechazo histórico. El seed es idempotente: no duplica ni sobrescribe datos existentes.
 
 | Rol | Correo |
 |---|---|
@@ -46,9 +46,11 @@ En Swagger, ejecuta `POST /api/v1/auth/sessions` con una cuenta demo, copia `acc
 | Postulaciones | `POST /campaigns/{id}/applications`; `GET /applications/mine`, `/applications/{id}`; `PUT /applications/{id}`; `POST /applications/{id}/cancellation` |
 | Acuerdos | `POST /agreements`; `GET /agreements/mine`, `/agreements/{id}`; `POST /agreements/{id}/decisions` con `termsVersion` |
 | Colaboraciones | `POST /collaborations`; `GET /collaborations/mine`, `/collaborations/{id}` |
+| Entregas y revisión | `GET, POST /collaborations/{id}/deliverables`; `GET /deliverables/{id}`; versiones, aprobación y rechazo por entrega |
+| Archivos privados | `POST /collaborations/{id}/assets`; `GET /collaboration-assets/{id}` y `/collaboration-assets/{id}/content` con JWT |
 | Redes sociales | `POST /social-accounts/{platform}/authorizations`; `GET /social-accounts/{platform}/callback`, `/social-accounts/authorizations/{authorizationId}`, `/social-accounts/me`, `/social-accounts/{socialId}/access` |
 
-Evaluación empresarial: `GET /campaigns/{id}/applications`, detalle y `POST /campaigns/{id}/applications/{applicationId}/decision`. [Contratos y compatibilidad del bloque 02](docs/campaign-contracts.md). [Acuerdos bilaterales y estado: bloque 03](docs/collaboration-contracts.md).
+Evaluación empresarial: `GET /campaigns/{id}/applications`, detalle y `POST /campaigns/{id}/applications/{applicationId}/decision`. [Contratos y compatibilidad del bloque 02](docs/campaign-contracts.md). [Acuerdos bilaterales y estado: bloque 03](docs/collaboration-contracts.md). [Entregas, archivos y revisión: bloque 04](docs/delivery-contracts.md).
 
 Para creación y detalle de contratos, consulta los controladores REST en `src/main/java/com/collabtech/platform`. Las migraciones de esquema están en `src/main/resources/db/migration`.
 

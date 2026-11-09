@@ -14,6 +14,36 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import com.zaxxer.hikari.HikariDataSource;
 
 class BackendMigrationUpgradeTests {
+    @Test void upgradesV10WithoutChangingAcceptedTermsOrEventReceipts() {
+        try (var data=new HikariDataSource()) {
+            data.setJdbcUrl("jdbc:h2:mem:upgrade-v10-"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1");
+            data.setUsername("sa");
+            String[] locations={"classpath:db/migration/identity","classpath:db/migration/campaign","classpath:db/migration/collaboration"};
+            Flyway.configure().dataSource(data).locations(locations).target("10").load().migrate();
+            var jdbc=new JdbcTemplate(data);var now=Timestamp.from(Instant.now());
+            String agreement=UUID.randomUUID().toString(), collaboration=UUID.randomUUID().toString();
+            String brand=UUID.randomUUID().toString(),creator=UUID.randomUUID().toString(),event=UUID.randomUUID().toString();
+            String snapshot="{\"historical\":\"accepted terms\"}",obligations="[{\"quantity\":2,\"approvedQuantity\":0}]";
+            jdbc.update("insert into collaboration_agreement(agreement_id,application_id,brand_id,creator_id,snapshot,status,acceptance_deadline,created_at) values(?,?,?,?,?,'ACCEPTED',?,?)",
+                    agreement,UUID.randomUUID().toString(),brand,creator,snapshot,now,now);
+            jdbc.update("insert into collaboration_collaboration(collaboration_id,agreement_id,brand_id,creator_id,snapshot,status,started_at,next_deadline,obligations) values(?,?,?,?,?,'ACTIVE',?,?,?)",
+                    collaboration,agreement,brand,creator,snapshot,now,now,obligations);
+            jdbc.update("insert into collaboration_outbox(event_id,aggregate_id,event_type,payload,occurred_at) values(?,?,'CollaborationExpired',?,?)",event,collaboration,snapshot,now);
+            jdbc.update("insert into collaboration_event_receipt(event_id,consumer,delivered,attempts,delivered_at) values(?,'existing.consumer',true,1,?)",event,now);
+            var before=jdbc.queryForMap("select * from collaboration_agreement where agreement_id=?",agreement);
+            var upgrade=Flyway.configure().dataSource(data).locations(locations).load();
+            assertEquals(1,upgrade.migrate().migrationsExecuted);upgrade.validate();
+            assertEquals(before,jdbc.queryForMap("select * from collaboration_agreement where agreement_id=?",agreement));
+            assertEquals(obligations,jdbc.queryForObject("select obligations from collaboration_collaboration where collaboration_id=?",String.class,collaboration));
+            assertNull(jdbc.queryForObject("select completed_at from collaboration_collaboration where collaboration_id=?",Timestamp.class,collaboration));
+            assertEquals(true,jdbc.queryForObject("select delivered from collaboration_event_receipt where event_id=?",Boolean.class,event));
+            jdbc.update("insert into collaboration_outbox(event_id,aggregate_id,event_type,payload,occurred_at) values(?,?,'CollaborationExpired',?,?)",UUID.randomUUID().toString(),collaboration,snapshot,now);
+            assertEquals(2,jdbc.queryForObject("select count(*) from collaboration_outbox where aggregate_id=?",Integer.class,collaboration));
+            assertEquals(0,jdbc.queryForObject("select count(*) from collaboration_deliverable",Integer.class));
+            assertEquals(0,upgrade.migrate().migrationsExecuted);
+        }
+    }
+
     @Test void upgradesV9SelectedApplicationsWithoutImplicitlyAcceptingAgreements() {
         try (var data = new HikariDataSource()) {
             data.setJdbcUrl("jdbc:h2:mem:upgrade-v9-"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1");
@@ -29,7 +59,7 @@ class BackendMigrationUpgradeTests {
                     application,campaign,UUID.randomUUID().toString(),"Agreed proposal",decided,decided,UUID.randomUUID().toString(),"Selected by owner");
             var before=jdbc.queryForMap("select * from campaign_application where application_id=?",application);
             var upgrade=Flyway.configure().dataSource(data).locations(locations).load();
-            assertEquals(1,upgrade.migrate().migrationsExecuted);
+            assertEquals(2,upgrade.migrate().migrationsExecuted);
             upgrade.validate();
             assertEquals(before,jdbc.queryForMap("select * from campaign_application where application_id=?",application));
             assertEquals(0,jdbc.queryForObject("select count(*) from collaboration_agreement",Integer.class));
@@ -52,7 +82,7 @@ class BackendMigrationUpgradeTests {
                 jdbc.update("insert into campaign_application(application_id,campaign_id,creator_id,message,status,submitted_at) values(?,?,?,?,'PENDING',?)",
                     id,campaign,id.equals(demo)?old:UUID.randomUUID().toString(),"Preserved proposal",Timestamp.from(Instant.now()));
             }
-            var upgrade=Flyway.configure().dataSource(data).locations(locations).load();assertEquals(2,upgrade.migrate().migrationsExecuted);
+            var upgrade=Flyway.configure().dataSource(data).locations(locations).load();assertEquals(3,upgrade.migrate().migrationsExecuted);
             assertEquals("20000000-0000-4000-8000-000000000002",jdbc.queryForObject("select creator_id from campaign_application where application_id=?",String.class,demo));
             assertEquals(2,jdbc.queryForObject("select count(*) from campaign_application where message='Preserved proposal' and status='PENDING' and decided_at is null",Integer.class));
             assertEquals(0L,jdbc.queryForObject("select change_sequence from campaign_campaign where campaign_id=?",Long.class,campaign));
@@ -73,7 +103,7 @@ class BackendMigrationUpgradeTests {
             jdbc.update("insert into identity_provider_credentials(credential_id,encrypted_access_token,scopes,expires_at) values(?,?,?,?)",
                     UUID.randomUUID().toString(),"existing-ciphertext","basic",Timestamp.from(Instant.now().plusSeconds(100)));
             var upgrade=Flyway.configure().dataSource(data).locations(locations).load();
-            assertEquals(3,upgrade.migrate().migrationsExecuted); upgrade.validate();
+            assertEquals(4,upgrade.migrate().migrationsExecuted); upgrade.validate();
             assertEquals(0,jdbc.queryForObject("select version from identity_brand_profile where profile_id=?",Long.class,profile));
             assertEquals("Existing description",jdbc.queryForObject("select description from identity_brand_profile where profile_id=?",String.class,profile));
             var credential=jdbc.queryForMap("select encrypted_access_token,refresh_expires_at,reauthorization_required,version from identity_provider_credentials");
@@ -96,7 +126,7 @@ class BackendMigrationUpgradeTests {
                     SecureTokens.digest(state),id,Timestamp.from(now.plusSeconds(600)));
             jdbc.update("insert into identity_access_session values(?,?,?)",SecureTokens.digest("old-session"),id,Timestamp.from(now.plusSeconds(3600)));
             var upgrade=Flyway.configure().dataSource(data).locations(locations).load();
-            assertEquals(5,upgrade.migrate().migrationsExecuted); upgrade.validate();
+            assertEquals(6,upgrade.migrate().migrationsExecuted); upgrade.validate();
             assertEquals(1,jdbc.queryForObject("select count(*) from identity_account",Integer.class));
             assertEquals(1,jdbc.queryForObject("select count(*) from identity_access_session",Integer.class));
             var authorization=new DatabaseAuthorizationStateStore(jdbc,Clock.fixed(now,ZoneOffset.UTC)).consume(state,new SocialPlatform("tiktok"));

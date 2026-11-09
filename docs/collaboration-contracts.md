@@ -1,6 +1,6 @@
 # Collaboration: bloque 03
 
-US-21 y US-22; escenarios 1 y 2 de TS-04. Se mantienen las cuatro capas DDD y la autorización JWT por participante. Las entregas/revisiones pertenecen al bloque 04 y las incidencias/historial al 05.
+US-21 y US-22; escenarios 1 y 2 de TS-04. Se mantienen las cuatro capas DDD y la autorización JWT por participante. Las entregas/revisiones ya se implementan y documentan en el [bloque 04](delivery-contracts.md); las incidencias/historial permanecen en el 05.
 
 ## Acuerdo bilateral
 
@@ -48,11 +48,11 @@ Ejemplo de recorrido desde Android/Swagger:
 
 `CollaborationView` incluye `snapshot`, `status`, `startedAt`, `expiredAt`, `version`, `nextDeadline`, cantidades requeridas/aprobadas y `deliverables`. Cada obligación conserva `specificationId`, un `deliverableId` propio, tipo, descripción, cantidades, fecha y `overdue`. Una especificación de dos videos continúa requiriendo dos videos; no se reduce a una sola entrega.
 
-Las colaboraciones nacen en `ACTIVE`. Si vence alguna obligación pendiente, las consultas muestran `EXPIRED` inmediatamente y el proceso periódico persiste ese estado. La fecha próxima corresponde a la obligación incompleta más temprana. El vencimiento conserva las obligaciones para permitir el tratamiento de entregas tardías en el bloque 04. `expiredAt` puede seguir nulo hasta que el proceso periódico registre la transición.
+Las colaboraciones nacen en `ACTIVE`. Si vence una entrega o corrección pendiente del creador, las consultas muestran `EXPIRED` inmediatamente y el proceso periódico persiste ese estado. La fecha próxima corresponde a la acción de entrega o corrección pendiente más temprana; una entrega presentada en plazo no vence por seguir esperando revisión de la empresa. El vencimiento conserva las obligaciones para admitir entregas tardías mediante el bloque 04. `expiredAt` puede seguir nulo hasta que el proceso periódico registre la transición.
 
-El catálogo contempla además `UNDER_REVIEW`, `COMPLETED`, `CANCELLED` y `DISPUTED` para las siguientes entregas; este bloque no ofrece comandos para forzar esos estados. No existe un PATCH genérico de estado ni cierre automático que ignore obligaciones.
+El bloque 04 deriva `UNDER_REVIEW` y `COMPLETED` a partir de entregas y aprobaciones reales. `CANCELLED` y `DISPUTED` quedan preparados para los bloques siguientes; no se ofrecen comandos para forzar esos estados. No existe un PATCH genérico de estado ni cierre automático que ignore obligaciones.
 
-`pendingActions` describe tareas del negocio: `SUBMIT_DELIVERABLE` o `SUBMIT_LATE_DELIVERABLE` para el creador; `WAIT_FOR_DELIVERY` para la marca. `availableActions` de colaboración se mantiene vacío hasta implementar sus comandos en el bloque 04. Android debe distinguir una tarea pendiente de una operación actualmente disponible.
+`pendingActions` describe tareas del negocio; `availableActions` identifica los comandos disponibles. Desde el bloque 04 incluye entrega, corrección, subida de archivos y revisión según rol, avance y plazo. El detalle actualizado y los estados de espera se documentan en [delivery-contracts.md](delivery-contracts.md).
 
 ## Errores y concurrencia
 
@@ -88,10 +88,10 @@ Configuración opcional:
 
 ## Demo y verificación
 
-Con el seed habilitado se agrega un acuerdo aceptado y una colaboración activa para la postulación demo `30000000-0000-4000-8000-000000000004`, entre `demo.brand@collabpro.app` y `demo.creator2@collabpro.app`. Las aceptaciones son datos de demostración explícitos. El runner se ejecuta después del seed existente y crea acuerdo, firmas y colaboración en una transacción; si ya existe un acuerdo, conserva sus decisiones y condiciones. No se reabren fechas vencidas ni se simulan pagos o accesos a redes sociales.
+Con el seed habilitado se agrega un acuerdo aceptado y una colaboración para la postulación demo `30000000-0000-4000-8000-000000000004`, entre `demo.brand@collabpro.app` y `demo.creator2@collabpro.app`. Las aceptaciones son datos de demostración explícitos. El runner se ejecuta después del seed existente y crea acuerdo, firmas y colaboración en una transacción; si ya existe un acuerdo, conserva sus decisiones y condiciones. El runner posterior del bloque 04 agrega una entrega corregida pendiente de revisión y preserva su rechazo histórico. No se reabren fechas vencidas ni se simulan pagos o accesos a redes sociales.
 
 Pruebas: dominio, recorrido HTTP con ambos roles, rechazo, firma individual, firma de condiciones distintas, aislamiento, JWT, listas, cantidades, snapshot inmutable, cierre de recepción, frontera de vencimiento, propuestas/firmas/activaciones concurrentes, decisiones opuestas, rollback y recuperación, outbox con fallo/reintento y consumidores simultáneos, seed idempotente, migración V9→V10 y regresiones anteriores. Swagger publica los siete endpoints nuevos. Ejecutar `.\mvnw.cmd test` o `.\scripts\test-mysql.ps1` para MySQL/Mailpit aislados.
 
-Resultado del 9 de noviembre de 2026: suite completa con MySQL 8.4/Mailpit, **216 pruebas aprobadas**, sin fallos, errores ni omisiones; las pruebas dedicadas de actualización utilizan H2. La regresión completa con H2 también terminó sin fallos: 215 aprobadas y una prueba de correo omitida por requerir Mailpit. Los siete endpoints y las respuestas 201 están verificados en OpenAPI. Los servicios aislados de prueba se detuvieron al finalizar.
+Verificación al cerrar el bloque 03, el 9 de noviembre de 2026: suite completa con MySQL 8.4/Mailpit, **216 pruebas aprobadas**, sin fallos, errores ni omisiones; las pruebas dedicadas de actualización utilizan H2. La regresión completa con H2 también terminó sin fallos: 215 aprobadas y una prueba de correo omitida por requerir Mailpit. Los siete endpoints y las respuestas 201 están verificados en OpenAPI. Los servicios aislados de prueba se detuvieron al finalizar.
 
 Estas verificaciones no acreditan un despliegue en Azure ni una integración móvil de las rutas nuevas. El código Android no forma parte del bloque 03.

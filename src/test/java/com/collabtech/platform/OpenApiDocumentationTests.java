@@ -47,6 +47,20 @@ class OpenApiDocumentationTests {
                 .andExpect(jsonPath("$.components.schemas.BrandProfileUpdate.required",org.hamcrest.Matchers.hasItem("expectedVersion")))
                 .andExpect(jsonPath("$.components.schemas.BrandProfile.properties.version").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/social-accounts/{socialId}/access'].get").exists());
+
+        mvc.perform(get("/v3/api-docs"))
+                .andExpect(jsonPath("$.paths['/api/v1/collaborations/{id}/deliverables'].post.responses['201']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/collaborations/{id}/deliverables'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/deliverables/{id}'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/deliverables/{id}/versions'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/deliverables/{id}/versions'].post.responses['201']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/deliverables/{id}/validation'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/deliverables/{id}/rejection'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/collaborations/{id}/assets'].post.responses['201']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/collaboration-assets/{id}'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/collaboration-assets/{id}/content'].get.responses['200'].content['application/pdf'].schema.format").value("binary"))
+                .andExpect(jsonPath("$.components.schemas.RejectionBody.required",org.hamcrest.Matchers.hasItem("correctionDeadline")))
+                .andExpect(jsonPath("$.components.schemas.ApprovalBody.required",org.hamcrest.Matchers.hasItem("submissionId")));
         mvc.perform(get("/api/v1/accounts/me")).andExpect(status().isUnauthorized());
     }
 }

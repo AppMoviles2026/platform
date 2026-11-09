@@ -6,14 +6,14 @@ La numeración identifica bloques de trabajo; los commits de control de versione
 
 ## Estado actual — 9 de noviembre de 2026
 
-**Tres bloques implementados y siete pendientes. El siguiente es el bloque 04.** «Implementado» describe el código y sus verificaciones, no confirma que el usuario haya creado el commit manual ni desplegado los cambios.
+**Cuatro bloques implementados y seis pendientes. El siguiente es el bloque 05.** «Implementado» describe el código y sus verificaciones, no confirma que el usuario haya creado el commit manual ni desplegado los cambios.
 
 | Bloque | Estado | Contexto | US y soporte | Entrega |
 | --- | --- | --- | --- | --- |
 | 01 | Implementado | Identity | US-12; regresión US-09/10/11/13/14; TS-01/02; SS-02 | Perfil empresarial, contratos de perfiles y ciclo de credenciales sociales. |
 | 02 | Implementado | Campaign | US-15/16/19/20; regresión US-17/18; TS-03 | Edición de borradores, versiones, evaluación y resultado de postulaciones. |
 | 03 | Implementado | Collaboration | US-21/22; TS-04 | Acuerdo bilateral, activación idempotente y consulta del ciclo de vida. |
-| 04 | Pendiente | Collaboration | US-23/24; TS-04/05 | Entregas puntuales/tardías, archivos, revisión y correcciones versionadas. |
+| 04 | Implementado | Collaboration | US-23/24; TS-04/05 | Entregas puntuales/tardías, archivos, revisión y correcciones versionadas. |
 | 05 | Pendiente | Collaboration | US-25/30; TS-05 | Incidencias, resolución e historial por participante. |
 | 06 | Pendiente | Billing | US-26; TS-06; SS-01 | Validación Sandbox del proveedor, vinculación financiera y base de webhooks. |
 | 07 | Pendiente | Billing | US-27; TS-06 | Planes y suscripciones confirmadas por el proveedor. |
@@ -29,19 +29,20 @@ US-01 a US-08 corresponden a la landing y quedan fuera de estos bloques. El cons
 - **Bloque 01:** consulta y edición del perfil empresarial con versión; consultas internas por ID de perfil; estado, renovación y reautorización de credenciales sociales; migración V8 y entorno de pruebas MySQL/Mailpit aislado. Detalles en [identity-contracts.md](identity-contracts.md).
 - **Bloque 02:** PATCH de borradores, versión de campaña y comprobación de condiciones; PATCH de postulaciones con versión obligatoria; consulta empresarial de postulantes, selección/rechazo con auditoría y resultado visible al creador; migración V9 y seed corregido/ampliado. Detalles en [campaign-contracts.md](campaign-contracts.md).
 - **Bloque 03:** acuerdos bilaterales desde selecciones, condiciones inmutables, firma/rechazo explícitos por participante, activación idempotente, obligaciones con cantidades y fechas, estado/vencimientos, outbox con recibos y reintentos, migración V10 y demo bilateral. Detalles en [collaboration-contracts.md](collaboration-contracts.md).
+- **Bloque 04:** entregas por pieza y cantidad, enlaces y archivos privados persistidos en MySQL, revisiones de versiones exactas, rechazo con observaciones/plazo, correcciones e historial de versiones; progreso, finalización y eventos transaccionales, idempotencia, migración V11 y demo con corrección. Detalles en [delivery-contracts.md](delivery-contracts.md).
 
-La regresión completa registrada tras el bloque 03 reúne **216 casos aprobados**, sin fallos, errores ni omisiones, con MySQL 8.4 y Mailpit aislados. Las pruebas específicas de actualización utilizan H2 dedicado. Se verificaron además firmas y propuestas simultáneas, activaciones repetidas, decisiones opuestas, rollback ante fallos, vencimientos, outbox, seed y Swagger. La regresión completa H2 finalizó también sin fallos: 215 aprobadas y una prueba de Mailpit omitida en ese entorno.
+La regresión completa registrada tras el bloque 04 reúne **245 casos aprobados**, sin fallos, errores ni omisiones, con MySQL 8.4 y Mailpit aislados. Las pruebas específicas de actualización utilizan H2 dedicado. Incluye acuerdos, cantidades, aprobación/rechazo/corrección, archivos privados e históricos, migración V10→V11, datos antiguos, idempotencia, concurrencia, rollback, eventos, seed y Swagger. La regresión completa con H2 también finalizó sin fallos: 244 aprobadas y una prueba de correo omitida por requerir Mailpit.
 
 ### Límites y verificaciones que siguen pendientes
 
 - Las redes sociales se probaron con respuestas HTTP controladas. Configurar y verificar consentimiento/renovación con cuentas externas reales sigue pendiente; SS-02 no debe presentarse como validación real concluida.
 - Android todavía debe consumir las rutas nuevas. Las condiciones y mutaciones heredadas que aceptan versión opcional conservan compatibilidad; los clientes deben enviar versión para detectar una pantalla desactualizada. Las rutas nuevas que la requieren están documentadas.
-- Seleccionar una postulación sigue sin crear una colaboración ni una aceptación bilateral. El bloque 03 exige las dos firmas y cubre US-21/22. Entregas/revisiones e incidencias/historial continúan en 04–05; Billing y Performance conservan su estructura base para 06–10.
+- Seleccionar una postulación sigue sin crear una colaboración ni una aceptación bilateral. El bloque 03 exige las dos firmas y cubre US-21/22. El bloque 04 cubre entregas/revisiones y sus versiones; incidencias/historial global continúan en el 05. Billing y Performance conservan su estructura base para 06–10.
 - Los resultados locales no acreditan que estos cambios estén desplegados en Azure. Ese despliegue y su verificación son independientes del estado de implementación.
 
 ## Bloque 01: alcance de implementación
 
-Estado del código: implementado y verificado el 8 de noviembre de 2026. Los bloques 02 y 03 también están implementados; los bloques 04–10 continúan pendientes. La verificación contra cuentas reales de redes sociales requiere configurar las aplicaciones externas; se detalla separadamente en los contratos de Identity.
+Estado del código: implementado y verificado el 8 de noviembre de 2026. Los bloques 02, 03 y 04 también están implementados; los bloques 05–10 continúan pendientes. La verificación contra cuentas reales de redes sociales requiere configurar las aplicaciones externas; se detalla separadamente en los contratos de Identity.
 
 Mensaje sugerido para el commit manual: `feat(identity): complete brand profiles and authorized social access`.
 
@@ -52,7 +53,7 @@ Mensaje sugerido para el commit manual: `feat(identity): complete brand profiles
 - Alinear Java entre Maven y Docker, añadir migración nueva y preparar ejecución MySQL/Mailpit aislada.
 - Documentar endpoints, errores, integración y verificaciones externas pendientes en [identity-contracts.md](identity-contracts.md).
 
-## Bloques 02 y 03 implementados y commits sugeridos para lo pendiente
+## Bloques 02–04 implementados y commits sugeridos para lo pendiente
 
 ### 02. Campaign
 
@@ -72,15 +73,19 @@ Regla confirmada por el usuario: aceptación hasta la primera fecha de entrega a
 
 ### 04. Collaboration: entregas y revisión
 
-Estado: **pendiente; siguiente bloque a implementar**.
+Estado: **implementado y verificado el 9 de noviembre de 2026**. Contratos y escenarios en [delivery-contracts.md](delivery-contracts.md).
 
 Commit manual sugerido: `feat(collaboration): implement submissions reviews and revisions`.
 
-Depende de 03. US-23 admite entrega válida y tardía; respetar cantidades, propiedad, referencias y archivos. US-24 conserva versiones y revisiones, requiere observaciones al rechazar y permite corrección según lo acordado. No aprobar una nueva versión mediante una decisión antigua ni marcar un pago como realizado al aprobar contenido.
+Depende de 03. US-23 registra cada pieza y su evidencia como pendiente de validación, admite primeras entregas tardías y conserva cantidades/fechas del acuerdo. Los archivos quedan en MySQL y se descargan con JWT y autorización por participante. US-24 aprueba/rechaza la versión exacta con control de concurrencia y registra nuevas versiones sin borrar las revisiones anteriores. Todas las piezas deben aprobarse para completar la colaboración; no se registra un pago por aprobar contenido.
+
+Regla de corrección confirmada por el usuario: al rechazar, la empresa debe indicar observaciones y una nueva fecha futura; se admite corregir antes de ese límite exclusivo. El plazo original y la tardanza histórica se conservan.
+
+Incluye los escenarios restantes de TS-04 y los dos de revisión de TS-05, migración V11 sin modificar anteriores, compatibilidad de obligaciones JSON de V10, archivos privados/históricos, claves de reintento, bloqueo del padre, eventos y rollback atómico. El seed agrega rechazo histórico y corrección pendiente sin cambiar las cantidades aceptadas. Android consumirá estos contratos posteriormente.
 
 ### 05. Collaboration: incidencias e historial
 
-Estado: **pendiente**.
+Estado: **pendiente; siguiente bloque a implementar**.
 
 Commit manual sugerido: `feat(collaboration): implement incidents and collaboration history`.
 
@@ -128,8 +133,8 @@ Depende de 01–09. US-29 escenarios 4–5: enlaces/códigos de colaboración, i
 
 ## Reglas de cierre por bloque
 
-Mantener los diez bloques originales: tres implementados y siete restantes. Cada bloque pendiente es una entrega funcional con su mensaje de commit sugerido; no se añaden commits separados para capas, pruebas o documentación. Los commits los crea manualmente el usuario cuando revise la entrega.
+Mantener los diez bloques originales: cuatro implementados y seis restantes. Cada bloque pendiente es una entrega funcional con su mensaje de commit sugerido; no se añaden commits separados para capas, pruebas o documentación. Los commits los crea manualmente el usuario cuando revise la entrega.
 
 Cada bloque incluye dominio, aplicación, infraestructura, REST, migración nueva, pruebas de sus escenarios y documentación. Mantener las cuatro capas, JWT y autorización por objeto, errores `ApiError`, fechas del servidor y control de reintentos/concurrencia. Las pruebas finales complementan las de cada bloque, no las sustituyen. Mantener separadas las pruebas controladas y las verificaciones externas reales.
 
-La vigencia de aceptación quedó confirmada en el bloque 03: primera fecha de entrega. Antes de los bloques siguientes deben concretarse plazos de corrección, ventana y autoridad de incidencias, viabilidad financiera, catálogo comercial, tratamiento de compensación mixta y métricas respaldadas. No fijar reglas comerciales arbitrarias en el código.
+La vigencia de aceptación quedó confirmada en el bloque 03: primera fecha de entrega. En el bloque 04 se confirmó que la empresa fija un nuevo plazo futuro al rechazar. Antes de los bloques siguientes deben concretarse ventana y autoridad de incidencias, viabilidad financiera, catálogo comercial, tratamiento de compensación mixta y métricas respaldadas. No fijar reglas comerciales arbitrarias en el código.

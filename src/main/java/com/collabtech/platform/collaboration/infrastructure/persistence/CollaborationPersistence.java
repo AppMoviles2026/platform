@@ -42,7 +42,7 @@ public class CollaborationPersistence implements Reads {
         if(row==null){row=new CollaborationJpaEntity();row.id=c.id().toString();row.agreementId=c.agreementId().toString();row.brandId=c.snapshot().brandId().toString();
             row.creatorId=c.snapshot().creatorId().toString();row.snapshot=json.writeValueAsString(c.snapshot());row.startedAt=c.startedAt();
         }else if(row.version!=c.version())throw new CollaborationFailure(Code.CONCURRENT_UPDATE);
-        row.obligations=json.writeValueAsString(c.obligations());row.status=c.status().name();row.deadline=c.nextDeadline();row.expiredAt=c.expiredAt();if(create)em.persist(row);em.flush();c.restoreVersion(row.version);return c;
+        row.obligations=json.writeValueAsString(c.obligations());row.status=c.status().name();row.deadline=c.nextDeadline();row.expiredAt=c.expiredAt();row.completedAt=c.completedAt();if(create)em.persist(row);em.flush();c.restoreVersion(row.version);return c;
     }
     public PageResult<Agreement> agreements(Actor actor,Agreement.Status status,PageRequest page,Instant now){
         String where="a."+field(actor)+"=:owner";boolean temporal=false;
@@ -70,7 +70,17 @@ public class CollaborationPersistence implements Reads {
             .setParameter("now",now).setMaxResults(limit).getResultList().stream().map(UUID::fromString).toList();}
     private Agreement agreement(AgreementJpaEntity r){return new Agreement(UUID.fromString(r.id),json.readValue(r.snapshot,AgreementSnapshot.class),Agreement.Status.valueOf(r.status),r.brandAt,uuid(r.brandBy),r.creatorAt,uuid(r.creatorBy),r.decidedAt,uuid(r.rejectedBy),r.version);}
     private Collaboration collaboration(CollaborationJpaEntity r){return new Collaboration(UUID.fromString(r.id),UUID.fromString(r.agreementId),json.readValue(r.snapshot,AgreementSnapshot.class),r.startedAt,Collaboration.Status.valueOf(r.status),
-            json.readValue(r.obligations,json.getTypeFactory().constructCollectionType(List.class,Collaboration.Obligation.class)),r.expiredAt,r.version);}
+            readObligations(r.obligations),r.expiredAt,r.completedAt,r.version);}
+    private List<Collaboration.Obligation> readObligations(String payload) {
+        var tree=json.readTree(payload);
+        for(var node:tree) {
+            var row=(tools.jackson.databind.node.ObjectNode)node;
+            if(!row.hasNonNull("submittedQuantity"))row.put("submittedQuantity",row.path("approvedQuantity").asInt());
+            if(!row.hasNonNull("pendingQuantity"))row.put("pendingQuantity",0);
+            if(!row.hasNonNull("rejectedQuantity"))row.put("rejectedQuantity",0);
+        }
+        return json.readValue(tree.toString(),json.getTypeFactory().constructCollectionType(List.class,Collaboration.Obligation.class));
+    }
     private static String field(Actor a){return a.party()==Agreement.Party.BRAND?"brandId":"creatorId";}
     private static int offset(PageRequest p){long n=(long)p.page()*p.size();if(n>Integer.MAX_VALUE)throw new IllegalArgumentException("Invalid page");return (int)n;}
     private static UUID uuid(String value){return value==null?null:UUID.fromString(value);}private static String string(UUID value){return value==null?null:value.toString();}

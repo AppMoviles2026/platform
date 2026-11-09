@@ -17,9 +17,9 @@ public final class CollaborationService {
     }
     public record AgreementView(UUID id,AgreementSnapshot snapshot,Agreement.Status status,Instant brandAcceptedAt,UUID brandAcceptedBy,
             Instant creatorAcceptedAt,UUID creatorAcceptedBy,Instant decidedAt,UUID rejectedBy,long version,UUID collaborationId,List<String> availableActions){}
-    public record Progress(UUID deliverableId,UUID specificationId,String contentType,String description,int requiredQuantity,int approvedQuantity,Instant deadline,boolean overdue){}
+    public record Progress(UUID deliverableId,UUID specificationId,String contentType,String description,int requiredQuantity,int approvedQuantity,Instant deadline,boolean overdue,int submittedQuantity,int pendingValidationQuantity,int rejectedQuantity,Instant correctionDeadline,Instant nextActionDeadline){}
     public record CollaborationView(UUID id,UUID agreementId,AgreementSnapshot snapshot,Collaboration.Status status,Instant startedAt,Instant expiredAt,
-            long version,Instant nextDeadline,int requiredQuantity,int approvedQuantity,List<Progress> deliverables,List<String> pendingActions,List<String> availableActions){}
+            long version,Instant nextDeadline,int requiredQuantity,int approvedQuantity,List<Progress> deliverables,List<String> pendingActions,List<String> availableActions,int submittedQuantity,int pendingValidationQuantity,int rejectedQuantity,Instant completedAt){}
     public AgreementView propose(UUID account,UUID application){return work.execute(()->{
         var actor=participants.actor(account);var snapshot=terms.capture(account,application,clock.instant());
         var existing=agreements.byApplication(application,true);
@@ -65,7 +65,7 @@ public final class CollaborationService {
     public void expireDue(){
         for(var id:work.execute(()->reads.dueAgreements(clock.instant(),100)))work.execute(()->{var a=agreement(id,true);if(a.expire(clock.instant()))agreements.save(a);return null;});
         for(var id:work.execute(()->reads.dueCollaborations(clock.instant(),100)))work.execute(()->{
-            var c=collaborations.byId(id,true).orElseThrow();if(c.expire(clock.instant())){collaborations.save(c);events.append(c.id(),"CollaborationExpired",c.snapshot(),c.expiredAt());}return null;});
+            var c=collaborations.byId(id,true).orElseThrow();if(c.expire(clock.instant())){collaborations.save(c);events.append(c.id(),"CollaborationExpired",c.snapshot(),clock.instant());}return null;});
     }
     private Agreement agreement(UUID id,boolean lock){return agreements.byId(id,lock).orElseThrow(()->new CollaborationFailure(Code.NOT_FOUND));}
     private void requireActiveParticipants(AgreementSnapshot s){if(!participants.active(s.brandId(),Agreement.Party.BRAND)||!participants.active(s.creatorId(),Agreement.Party.CREATOR))throw new CollaborationFailure(Code.ACCOUNT_NOT_ACTIVE);}
@@ -79,9 +79,27 @@ public final class CollaborationService {
     private CollaborationView collaborationView(Collaboration c,Actor actor){
         var now=clock.instant();var status=c.effectiveStatus(now);int required=c.obligations().stream().mapToInt(Collaboration.Obligation::quantity).sum();
         int approved=c.obligations().stream().mapToInt(Collaboration.Obligation::approvedQuantity).sum();
-        boolean needsDelivery=approved<required&&status!=Collaboration.Status.COMPLETED&&status!=Collaboration.Status.CANCELLED;
-        var pending=needsDelivery?List.of(actor.party()==Agreement.Party.CREATOR?(status==Collaboration.Status.EXPIRED?"SUBMIT_LATE_DELIVERABLE":"SUBMIT_DELIVERABLE"):"WAIT_FOR_DELIVERY"):List.<String>of();
+
+        int submitted=c.obligations().stream().mapToInt(Collaboration.Obligation::submittedQuantity).sum();
+        int reviewing=c.obligations().stream().mapToInt(Collaboration.Obligation::pendingQuantity).sum();
+        int rejected=c.obligations().stream().mapToInt(Collaboration.Obligation::rejectedQuantity).sum();
+        boolean open=status!=Collaboration.Status.COMPLETED&&status!=Collaboration.Status.CANCELLED&&status!=Collaboration.Status.DISPUTED;
+        var pending=new ArrayList<String>();var actions=new ArrayList<String>();
+        if(open&&actor.party()==Agreement.Party.CREATOR){
+            if(submitted<required){pending.add(status==Collaboration.Status.EXPIRED?"SUBMIT_LATE_DELIVERABLE":"SUBMIT_DELIVERABLE");actions.add("SUBMIT_DELIVERABLE");}
+            if(rejected>0){
+                boolean correctable=c.obligations().stream().anyMatch(o->o.rejectedQuantity()>0&&o.latestCorrectionDeadline()!=null&&now.isBefore(o.latestCorrectionDeadline()));
+                pending.add(correctable?"CORRECT_DELIVERABLE":"CORRECTION_WINDOW_EXPIRED");
+                if(correctable)actions.add("SUBMIT_REVISION");
+            }
+            if(reviewing>0)pending.add("WAIT_FOR_REVIEW");
+            if(!actions.isEmpty())actions.add("UPLOAD_ASSET");
+        }else if(open){
+            if(reviewing>0){pending.add("REVIEW_DELIVERABLE");actions.add("REVIEW_DELIVERABLE");}
+            if(submitted<required)pending.add("WAIT_FOR_DELIVERY");
+            if(rejected>0)pending.add("WAIT_FOR_CORRECTION");
+        }
         return new CollaborationView(c.id(),c.agreementId(),c.snapshot(),status,c.startedAt(),c.expiredAt(),c.version(),c.nextDeadline(),required,approved,
-                c.obligations().stream().map(d->new Progress(d.id(),d.specificationId(),d.contentType(),d.description(),d.quantity(),d.approvedQuantity(),d.deadline(),d.outstanding()&&!d.deadline().isAfter(now))).toList(),pending,List.of());
+                c.obligations().stream().map(d->new Progress(d.id(),d.specificationId(),d.contentType(),d.description(),d.quantity(),d.approvedQuantity(),d.deadline(),d.nextActionDeadline()!=null&&!d.nextActionDeadline().isAfter(now),d.submittedQuantity(),d.pendingQuantity(),d.rejectedQuantity(),d.correctionDeadline(),d.nextActionDeadline())).toList(),List.copyOf(pending),List.copyOf(actions),submitted,reviewing,rejected,c.completedAt());
     }
 }

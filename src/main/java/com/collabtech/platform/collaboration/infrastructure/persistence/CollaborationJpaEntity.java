@@ -15,6 +15,7 @@ public class CollaborationJpaEntity {
     @JdbcTypeCode(SqlTypes.TIMESTAMP) @Column(name="started_at",columnDefinition="datetime(6)",nullable=false) Instant startedAt;
     @JdbcTypeCode(SqlTypes.TIMESTAMP) @Column(name="next_deadline",columnDefinition="datetime(6)") Instant deadline;
     @JdbcTypeCode(SqlTypes.TIMESTAMP) @Column(name="expired_at",columnDefinition="datetime(6)") Instant expiredAt;
+    @JdbcTypeCode(SqlTypes.TIMESTAMP) @Column(name="completed_at",columnDefinition="datetime(6)") Instant completedAt;
     @Version @Column(nullable=false) long version;
     protected CollaborationJpaEntity(){}
 }
