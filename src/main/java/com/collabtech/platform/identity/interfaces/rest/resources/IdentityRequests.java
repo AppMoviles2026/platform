@@ -4,6 +4,10 @@ import jakarta.validation.constraints.*;
 
 public final class IdentityRequests {
     private IdentityRequests() {}
+    @io.swagger.v3.oas.annotations.media.Schema(name="BrandProfileUpdate")
+    public record BrandProfile(@NotBlank @Size(max=150) String businessName,
+            @Size(max=2000) String description, @Size(max=150) String category, @Size(max=150) String location,
+            @NotNull @PositiveOrZero Long expectedVersion) {}
     public record Login(@NotBlank @Email @Size(max=254) String email, @NotBlank @Size(max=128) String password) {
         public Login { email = email == null ? null : email.strip(); }
         @Override public String toString() { return "Login[redacted]"; }

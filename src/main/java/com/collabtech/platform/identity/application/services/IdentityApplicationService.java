@@ -24,6 +24,7 @@ public final class IdentityApplicationService implements IdentityCommandService,
     private final AccountRecoveryService recovery;
     private final AuthorizationStateStore states;
     private final SocialOAuthClient social;
+    private final SocialAuthorizationAccess socialAccess;
     private final IdentityUnitOfWork unitOfWork;
     private final RegisterBrandCommandHandler brands;
     private final RegisterCreatorCommandHandler creators;
@@ -31,10 +32,12 @@ public final class IdentityApplicationService implements IdentityCommandService,
 
     public IdentityApplicationService(AccountRepository accounts, PasswordHasher passwords, AccessTokenProvider sessions,
             AccountRecoveryService recovery, AuthorizationStateStore states, SocialOAuthClient social,
-            IdentityUnitOfWork unitOfWork, RegisterBrandCommandHandler brands, RegisterCreatorCommandHandler creators) {
+            IdentityUnitOfWork unitOfWork, RegisterBrandCommandHandler brands, RegisterCreatorCommandHandler creators,
+            SocialAuthorizationAccess socialAccess) {
         this.accounts = accounts; this.passwords = passwords; this.sessions = sessions; this.recovery = recovery;
         this.states = states; this.social = social; this.unitOfWork = unitOfWork;
         this.brands = brands; this.creators = creators;
+        this.socialAccess = socialAccess;
         this.dummyHash = passwords.hash("UnrelatedTimingComparisonPassword");
     }
 
@@ -57,9 +60,25 @@ public final class IdentityApplicationService implements IdentityCommandService,
         recovery.resetPassword(command.token(), passwords.hash(command.newPassword())); return null;
     }
 
+    public IdentityViews.BrandProfileView handle(UpdateBrandProfileCommand command) {
+        return unitOfWork.execute(() -> {
+            var account = activeForUpdate(command.accountId());
+            if (account.accountType() != AccountType.BRAND) throw new IdentityFailure(IdentityFailure.Code.BRAND_REQUIRED);
+            if (account.brandProfile().version() != command.expectedVersion())
+                throw new IdentityFailure(IdentityFailure.Code.CONCURRENT_UPDATE);
+            account.updateBrandProfile(command.businessName(), command.description(), command.category(), command.location());
+            accounts.save(account);
+            return brandView(account);
+        });
+    }
+    public IdentityViews.BrandProfileView handle(GetBrandProfileQuery query) {
+        return unitOfWork.execute(() -> brandView(brand(query.accountId())));
+    }
+
     public IdentityViews.CreatorProfileView handle(UpdateCreatorProfileCommand command) {
         return unitOfWork.execute(() -> {
-            var account = creator(command.accountId());
+            var account = activeForUpdate(command.accountId());
+            if (account.accountType() != AccountType.CREATOR) throw new IdentityFailure(IdentityFailure.Code.CREATOR_REQUIRED);
             account.updateCreatorProfile(command.displayName(), command.biography(), command.niche(),
                     command.audienceDescription(), command.location());
             accounts.save(account);
@@ -89,8 +108,20 @@ public final class IdentityApplicationService implements IdentityCommandService,
                 throw new IdentityFailure(IdentityFailure.Code.AUTHORIZATION_DENIED);
             }
             var result = unitOfWork.execute(() -> {
-                var account = creator(authorization.owner());
+                var account = activeForUpdate(authorization.owner());
+                if (account.accountType() != AccountType.CREATOR) throw new IdentityFailure(IdentityFailure.Code.CREATOR_REQUIRED);
                 var approved = social.exchangeCode(authorization.platform(), command.authorizationCode());
+                var existing = account.creatorProfile().socialMediaAccounts().stream()
+                        .filter(s -> s.platform().equals(authorization.platform()) && s.externalAccountId().equals(approved.externalAccountId()))
+                        .findFirst();
+                if (existing.isPresent()) {
+                    if (!social.replaceUnavailableCredentials(approved.credentialReceipt(), existing.get().id()))
+                        throw new DuplicateSocialAccountException();
+                    account.renewSocialAccount(existing.get().id(), approved.username());
+                    accounts.save(account);
+                    states.finish(authorization.authorizationId(), "SUCCEEDED", null);
+                    return socialView(existing.get());
+                }
                 var linked = new SocialMediaAccount(new SocialMediaAccountId(UUID.randomUUID()), authorization.platform(),
                         approved.externalAccountId(), approved.username(), SocialAccountStatus.ACTIVE);
                 account.linkSocialAccount(linked);
@@ -125,10 +156,29 @@ public final class IdentityApplicationService implements IdentityCommandService,
                 .stream().map(IdentityApplicationService::socialView).toList());
     }
 
+    public IdentityViews.SocialAccessView socialAccessStatus(AccountId owner, SocialMediaAccountId socialId) {
+        return unitOfWork.execute(() -> socialAccess.inspect(creator(owner).creatorProfile().id(), socialId, java.util.Set.of()));
+    }
+
+    private Account activeForUpdate(AccountId id) {
+        var account = accounts.findByIdForUpdate(id).orElseThrow(() -> new IdentityFailure(IdentityFailure.Code.ACCOUNT_NOT_ACTIVE));
+        if (account.status() != AccountStatus.ACTIVE) throw new IdentityFailure(IdentityFailure.Code.ACCOUNT_NOT_ACTIVE);
+        return account;
+    }
     private Account active(AccountId id) {
         var account = accounts.findById(id).orElseThrow(() -> new IdentityFailure(IdentityFailure.Code.ACCOUNT_NOT_ACTIVE));
         if (account.status() != AccountStatus.ACTIVE) throw new IdentityFailure(IdentityFailure.Code.ACCOUNT_NOT_ACTIVE);
         return account;
+    }
+    private Account brand(AccountId id) {
+        var account = active(id);
+        if (account.accountType() != AccountType.BRAND) throw new IdentityFailure(IdentityFailure.Code.BRAND_REQUIRED);
+        return account;
+    }
+    private static IdentityViews.BrandProfileView brandView(Account account) {
+        var profile = account.brandProfile();
+        return new IdentityViews.BrandProfileView(profile.id().value(), profile.businessName(), profile.description(),
+                profile.category(), profile.location(), profile.version());
     }
     private Account creator(AccountId id) {
         var account = active(id);

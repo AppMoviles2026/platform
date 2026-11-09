@@ -68,6 +68,25 @@ class SocialOAuthAdapterTests {
         assertEquals("creador", adapter.exchangeCode(new SocialPlatform("instagram"), "code").username());
         server.verify();
     }
+    @Test void instagramDoesNotInventRequestedPermissionsAbsentFromTheResponse() {
+        var builder=RestClient.builder(); var localServer=MockRestServiceServer.bindTo(builder).build();
+        var provider=new HttpSocialOAuthClient.Provider("client","secret","https://backend.example/callback",
+                "https://fixture.example/authorize","https://fixture.example/token","https://fixture.example/me","instagram_business_basic,additional_permission");
+        var client=new HttpSocialOAuthClient(Map.of("instagram",provider),builder.build(),jdbc,cipher,Clock.systemUTC());
+        assertTrue(client.authorizationUri(new SocialPlatform("instagram"),"state").toString().contains("additional_permission"));
+        localServer.expect(requestTo("https://fixture.example/token")).andRespond(withSuccess("{\"access_token\":\"fixture\",\"user_id\":\"ig-basic\"}",MediaType.APPLICATION_JSON));
+        localServer.expect(requestTo("https://fixture.example/me")).andRespond(withSuccess("{\"user_id\":\"ig-basic\",\"username\":\"creator\"}",MediaType.APPLICATION_JSON));
+        var linked=client.exchangeCode(new SocialPlatform("instagram"),"code");
+        assertEquals("instagram_business_basic",jdbc.queryForObject("select scopes from identity_provider_credentials where credential_id=?",String.class,linked.credentialReceipt().toString()));
+        localServer.verify();
+    }
+    @Test void instagramWithoutTheBasicGrantedPermissionIsDenied() {
+        int before=jdbc.queryForObject("select count(*) from identity_provider_credentials",Integer.class);
+        server.expect(requestTo("https://fixture.example/token")).andRespond(withSuccess("{\"access_token\":\"fixture\",\"permissions\":[\"other\"]}",MediaType.APPLICATION_JSON));
+        assertEquals(IdentityFailure.Code.AUTHORIZATION_DENIED,assertThrows(IdentityFailure.class,
+                ()->adapter.exchangeCode(new SocialPlatform("instagram"),"code")).code());
+        assertEquals(before,jdbc.queryForObject("select count(*) from identity_provider_credentials",Integer.class)); server.verify();
+    }
     @Test void mismatchedIdentityIsDenied() {
         server.expect(requestTo("https://fixture.example/token"))
                 .andRespond(withSuccess("{\"access_token\":\"fixture\",\"open_id\":\"first\",\"scope\":\"user.info.basic\"}", MediaType.APPLICATION_JSON));

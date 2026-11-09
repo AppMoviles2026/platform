@@ -49,4 +49,10 @@ public class SocialMediaController {
     public List<IdentityResources.SocialAccount> linked() {
         return identity.handle(new GetLinkedSocialMediaQuery(new AccountId(actor.accountId()))).stream().map(IdentityResources::social).toList();
     }
+    @GetMapping("/{socialId}/access")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Consultar disponibilidad de la autorización social propia", description = "Devuelve permisos, vencimiento y necesidad de autorizar nuevamente; nunca devuelve tokens.")
+    public ResponseEntity<IdentityViews.SocialAccessView> accessStatus(@PathVariable UUID socialId) {
+        return ResponseEntity.ok().header("Cache-Control", "no-store").body(identity.socialAccessStatus(
+                new AccountId(actor.accountId()), new com.collabtech.platform.identity.domain.model.valueobjects.SocialMediaAccountId(socialId)));
+    }
 }

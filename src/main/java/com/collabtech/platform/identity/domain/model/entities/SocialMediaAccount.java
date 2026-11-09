@@ -9,8 +9,8 @@ import com.collabtech.platform.identity.domain.model.valueobjects.SocialAccountS
 public final class SocialMediaAccount extends Entity<SocialMediaAccountId> {
     private final SocialPlatform platform;
     private final String externalAccountId;
-    private final String username;
-    private final SocialAccountStatus status;
+    private String username;
+    private SocialAccountStatus status;
 
     public SocialMediaAccount(SocialMediaAccountId id, SocialPlatform platform, String externalAccountId, String username, SocialAccountStatus status) {
         super(id);
@@ -30,4 +30,9 @@ public final class SocialMediaAccount extends Entity<SocialMediaAccountId> {
     public String externalAccountId() { return externalAccountId; }
     public String username() { return username; }
     public SocialAccountStatus status() { return status; }
+    public void renewAuthorization(String username) {
+        if (username == null || username.isBlank() || username.length() > 255) throw new IllegalArgumentException("Authorized username required");
+        this.username = username;
+        this.status = SocialAccountStatus.ACTIVE;
+    }
 }

@@ -33,6 +33,10 @@ public class AccountPersistenceAdapter implements AccountRepository {
                 entityManager.lock(existing, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
             }
             entityManager.flush();
+            if (account.brandProfile() != null) {
+                account.brandProfile().restoreVersion(entityManager.find(BrandProfileJpaEntity.class,
+                        account.brandProfile().id().value().toString()).version);
+            }
             return account;
         } catch (RuntimeException failure) {
             for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
@@ -58,6 +62,24 @@ public class AccountPersistenceAdapter implements AccountRepository {
                 .map(AccountPersistenceMapper::toDomain);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Account> findByBrandProfileId(com.collabtech.platform.identity.domain.model.valueobjects.BrandProfileId id) {
+        return entityManager.createQuery("select a from AccountJpaEntity a join a.brandProfile p where p.id=:id", AccountJpaEntity.class)
+                .setParameter("id", id.value().toString()).getResultStream().findFirst().map(AccountPersistenceMapper::toDomain);
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Account> findByCreatorProfileId(com.collabtech.platform.identity.domain.model.valueobjects.CreatorProfileId id) {
+        return entityManager.createQuery("select a from AccountJpaEntity a join a.creatorProfile p where p.id=:id", AccountJpaEntity.class)
+                .setParameter("id", id.value().toString()).getResultStream().findFirst().map(AccountPersistenceMapper::toDomain);
+    }
+    @Override
+    @Transactional
+    public Optional<Account> findByIdForUpdate(AccountId id) {
+        return Optional.ofNullable(entityManager.find(AccountJpaEntity.class, id.value().toString(), LockModeType.PESSIMISTIC_WRITE))
+                .map(AccountPersistenceMapper::toDomain);
+    }
     @Override
     @Transactional(readOnly = true)
     public Optional<Account> findByEmail(EmailAddress email) {

@@ -17,6 +17,21 @@ public class IdentityProfileFacadeAdapter implements IdentityProfileFacade {
     private final AccountRepository accounts;
     public IdentityProfileFacadeAdapter(AccountRepository accounts) { this.accounts = accounts; }
     @Transactional(readOnly = true)
+    public Optional<BrandDetails> brandById(UUID id) {
+        return accounts.findByBrandProfileId(new com.collabtech.platform.identity.domain.model.valueobjects.BrandProfileId(id))
+                .map(account -> { var p = account.brandProfile();
+                    return new BrandDetails(p.id().value(), p.businessName(), p.description(), p.category(), p.location(), account.status() == AccountStatus.ACTIVE); });
+    }
+    @Transactional(readOnly = true)
+    public Optional<CreatorDetails> creatorById(UUID id) {
+        return accounts.findByCreatorProfileId(new com.collabtech.platform.identity.domain.model.valueobjects.CreatorProfileId(id))
+                .map(account -> { var p = account.creatorProfile();
+                    return new CreatorDetails(p.id().value(), p.displayName(), p.biography(), p.niche(), p.audienceDescription(), p.location(),
+                            account.status() == AccountStatus.ACTIVE, p.socialMediaAccounts().stream()
+                            .filter(s -> s.status() == com.collabtech.platform.identity.domain.model.valueobjects.SocialAccountStatus.ACTIVE)
+                            .map(s -> new SocialIdentity(s.id().value(), s.platform().code(), s.username())).toList()); });
+    }
+    @Transactional(readOnly = true)
     public Optional<IdentityProfileFacade.Profile> byAccount(UUID accountId) {
         return accounts.findById(new AccountId(accountId)).map(account -> {
             boolean brand = account.accountType() == AccountType.BRAND;

@@ -12,6 +12,7 @@ public final class IdentityResources {
         @Override public String toString() { return "Session[accessToken redacted]"; }
     }
     public record CreatorProfile(UUID profileId, String displayName, String biography, String niche, String audienceDescription, String location) {}
+    public record BrandProfile(UUID profileId, String businessName, String description, String category, String location, long version) {}
     public record SocialAccount(UUID id, String platform, String username, String status) {}
     public record Authorization(URI authorizationUrl, UUID authorizationId) {}
     public record RecoveryAccepted(String message) {}
@@ -20,6 +21,9 @@ public final class IdentityResources {
     }
     public static CreatorProfile profile(IdentityViews.CreatorProfileView view) {
         return new CreatorProfile(view.profileId(), view.displayName(), view.biography(), view.niche(), view.audienceDescription(), view.location());
+    }
+    public static BrandProfile brand(IdentityViews.BrandProfileView view) {
+        return new BrandProfile(view.profileId(), view.businessName(), view.description(), view.category(), view.location(), view.version());
     }
     public static SocialAccount social(IdentityViews.SocialAccountView view) {
         return new SocialAccount(view.id(), view.platform(), view.username(), view.status());

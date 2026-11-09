@@ -41,9 +41,10 @@ En Swagger, ejecuta `POST /api/v1/auth/sessions` con una cuenta demo, copia `acc
 |---|---|
 | Cuenta y acceso | `POST /auth/brands`, `/auth/creators`, `/auth/sessions`, `/auth/recovery-requests`, `/auth/password-resets`; `GET /accounts/me` |
 | Perfil creador | `GET, PUT /profiles/me/creator` |
+| Perfil empresarial | `GET, PUT /profiles/me/brand`; el guardado requiere `expectedVersion` de la consulta |
 | Campañas | `GET, POST /campaigns`; `GET /campaigns/{id}`; `GET /campaigns/mine`, `/campaigns/published`; condiciones, publicación, cierre y descarte por campaña |
 | Postulaciones | `POST /campaigns/{id}/applications`; `GET /applications/mine`, `/applications/{id}`; `PUT /applications/{id}`; `POST /applications/{id}/cancellation` |
-| Redes sociales | `POST /social-accounts/{platform}/authorizations`; `GET /social-accounts/{platform}/callback`, `/social-accounts/authorizations/{authorizationId}`, `/social-accounts/me` |
+| Redes sociales | `POST /social-accounts/{platform}/authorizations`; `GET /social-accounts/{platform}/callback`, `/social-accounts/authorizations/{authorizationId}`, `/social-accounts/me`, `/social-accounts/{socialId}/access` |
 
 Para creación y detalle de contratos, consulta los controladores REST en `src/main/java/com/collabtech/platform`. Las migraciones de esquema están en `src/main/resources/db/migration`.
 
@@ -59,8 +60,12 @@ Genera claves distintas y aleatorias para JWT y cifrado; no uses valores locales
 
 ## Desarrollo
 
+Requiere JDK 21 o superior (Java 21 en Docker). [Plan de diez bloques](docs/implementation-plan.md) · [Contratos de Identity y límites OAuth](docs/identity-contracts.md).
+
 ```powershell
 .\mvnw.cmd test
 ```
+
+Pruebas con MySQL y Mailpit aislados: `.\scripts\test-mysql.ps1`. No utiliza el volumen de la aplicación.
 
 Para ejecutar Spring fuera de Docker, inicia primero MySQL y Mailpit con `docker compose up -d mysql mailpit` y luego `.\mvnw.cmd spring-boot:run`.

@@ -167,14 +167,16 @@ class RegistrationApiTests {
 
     @Test void profilePersistenceFailureRollsBackTheAccountInsert() {
         var email = new EmailAddress(email());
+        var existing = accounts.save(Account.registerBrand(new EmailAddress(email()), passwords.hash(PASSWORD), "Existing brand", Instant.now()));
+        // Force a genuine profile primary-key collision. Oversized descriptions are now rejected by the domain before persistence.
         var profile = new com.collabtech.platform.identity.domain.model.entities.BrandProfile(
-                new com.collabtech.platform.identity.domain.model.valueobjects.BrandProfileId(UUID.randomUUID()),
-                "Empresa", "x".repeat(2001), null, null);
+                existing.brandProfile().id(), "Empresa", null, null, null);
         var account = new Account(new com.collabtech.platform.identity.domain.model.valueobjects.AccountId(UUID.randomUUID()),
                 email, passwords.hash(PASSWORD), com.collabtech.platform.identity.domain.model.valueobjects.AccountType.BRAND,
                 com.collabtech.platform.identity.domain.model.valueobjects.AccountStatus.ACTIVE, Instant.now(), profile, null);
         assertThrows(RuntimeException.class, () -> accounts.save(account));
         assertFalse(accounts.existsByEmail(email));
+        assertEquals("Existing brand", accounts.findById(existing.id()).orElseThrow().brandProfile().businessName());
     }
 
     private boolean saveAfterBarrier(Account account, CyclicBarrier barrier) throws Exception {

@@ -57,27 +57,40 @@ public class IdentityWorkflowConfiguration {
                 env.getRequiredProperty("identity.recovery.reset-url"), env.getRequiredProperty("identity.recovery.from"),
                 env.getProperty("identity.recovery.delivery-enabled", Boolean.class, true));
     }
-    @Bean SocialOAuthClient socialOAuthClient(Environment env, JdbcTemplate jdbc, SecretCipher cipher, Clock clock) {
+    @Bean RestClient identityProviderHttpClient() {
         var client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
         var factory = new JdkClientHttpRequestFactory(client); factory.setReadTimeout(Duration.ofSeconds(10));
-        var http = RestClient.builder().requestFactory(factory).build();
-        return new HttpSocialOAuthClient(Map.of(
+        return RestClient.builder().requestFactory(factory).build();
+    }
+    private static Map<String, HttpSocialOAuthClient.Provider> providers(Environment env) {
+        return Map.of(
                 "tiktok", provider(env, "tiktok", "https://www.tiktok.com/v2/auth/authorize/",
                         "https://open.tiktokapis.com/v2/oauth/token/",
                         "https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name", "user.info.basic"),
                 "instagram", provider(env, "instagram", "https://www.instagram.com/oauth/authorize",
                         "https://api.instagram.com/oauth/access_token",
-                        "https://graph.instagram.com/me?fields=user_id,username", "instagram_business_basic")), http, jdbc, cipher, clock);
+                        "https://graph.instagram.com/me?fields=user_id,username", "instagram_business_basic"));
+    }
+    @Bean SocialOAuthClient socialOAuthClient(Environment env, JdbcTemplate jdbc, SecretCipher cipher, Clock clock, RestClient identityProviderHttpClient) {
+        return new HttpSocialOAuthClient(providers(env), identityProviderHttpClient, jdbc, cipher, clock);
+    }
+    @Bean HttpSocialTokenRefresher socialTokenRefresher(Environment env, RestClient identityProviderHttpClient, Clock clock) {
+        return new HttpSocialTokenRefresher(providers(env), identityProviderHttpClient, clock);
+    }
+    @Bean DatabaseSocialAuthorizationAccess socialAuthorizationAccess(JdbcTemplate jdbc, SecretCipher cipher, Clock clock,
+            HttpSocialTokenRefresher refresher, PlatformTransactionManager manager) {
+        return new DatabaseSocialAuthorizationAccess(jdbc, cipher, clock, refresher, manager);
     }
     private static HttpSocialOAuthClient.Provider provider(Environment env, String name, String authorize, String token, String userInfo, String scopes) {
         String prefix = "identity.oauth." + name + ".";
         return new HttpSocialOAuthClient.Provider(env.getProperty(prefix + "client-id", ""),
                 env.getProperty(prefix + "client-secret", ""), env.getProperty(prefix + "redirect-uri", ""),
-                authorize, token, userInfo, scopes);
+                authorize, token, userInfo, env.getProperty(prefix + "scopes", scopes));
     }
     @Bean IdentityApplicationService identityApplicationService(AccountRepository accounts, PasswordHasher passwords,
             AccessTokenProvider tokens, AccountRecoveryService recovery, AuthorizationStateStore states,
-            SocialOAuthClient social, IdentityUnitOfWork unit, RegisterBrandCommandHandler brands, RegisterCreatorCommandHandler creators) {
-        return new IdentityApplicationService(accounts, passwords, tokens, recovery, states, social, unit, brands, creators);
+            SocialOAuthClient social, IdentityUnitOfWork unit, RegisterBrandCommandHandler brands, RegisterCreatorCommandHandler creators,
+            SocialAuthorizationAccess socialAccess) {
+        return new IdentityApplicationService(accounts, passwords, tokens, recovery, states, social, unit, brands, creators, socialAccess);
     }
 }

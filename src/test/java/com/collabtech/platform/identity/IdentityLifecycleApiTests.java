@@ -296,6 +296,23 @@ class IdentityLifecycleApiTests {
                 .header("Authorization","Bearer "+token)).andExpect(status().isOk()).andReturn();
         return json.readTree(result.getResponse().getContentAsString());
     }
+    @Test void renewedConsentReusesTheSocialIdAndReactivatesTheVerifiedIdentity() throws Exception {
+        String owner=token(register("creators"));
+        var start=startAndroidAuthorization(owner);
+        String state=URI.create(start.path("authorizationUrl").asText()).getQuery().substring("state=".length());
+        mvc.perform(get("/api/v1/social-accounts/tiktok/callback").param("state",state).param("code","approved")).andExpect(status().isSeeOther());
+        var linked=json.readTree(mvc.perform(get("/api/v1/social-accounts/me").header("Authorization","Bearer "+owner))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        String id=linked.get(0).path("id").asText();
+        jdbc.update("update identity_social_account set status='REVOKED' where social_id=?",id);
+        when(social.replaceUnavailableCredentials(any(),any())).thenReturn(true);
+        var retry=startAndroidAuthorization(owner);
+        String nextState=URI.create(retry.path("authorizationUrl").asText()).getQuery().substring("state=".length());
+        mvc.perform(get("/api/v1/social-accounts/tiktok/callback").param("state",nextState).param("code","approved")).andExpect(status().isSeeOther());
+        mvc.perform(get("/api/v1/social-accounts/me").header("Authorization","Bearer "+owner))
+                .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].id").value(id)).andExpect(jsonPath("$[0].status").value("ACTIVE"));
+        mvc.perform(get("/api/v1/social-accounts/tiktok/callback").param("state",nextState).param("code","approved")).andExpect(status().isBadRequest());
+    }
     @Test void loginAndProfileAccessWorkOverRealHttpWithSecurityFilters() throws Exception {
         String email = register("creators");
         var client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();

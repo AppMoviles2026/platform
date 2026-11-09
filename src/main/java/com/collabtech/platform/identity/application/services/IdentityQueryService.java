@@ -7,9 +7,10 @@ import com.collabtech.platform.identity.application.projections.IdentityViews;
 
 import java.util.List;
 
-/** Inbound read port only; no persistence or endpoint implementation yet. */
+/** Inbound read port implemented by IdentityApplicationService. */
 public interface IdentityQueryService {
     IdentityViews.AccountView handle(GetCurrentAccountQuery query);
     IdentityViews.CreatorProfileView handle(GetUserProfileQuery query);
+    IdentityViews.BrandProfileView handle(com.collabtech.platform.identity.application.queries.GetBrandProfileQuery query);
     List<IdentityViews.SocialAccountView> handle(GetLinkedSocialMediaQuery query);
 }

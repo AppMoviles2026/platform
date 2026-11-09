@@ -57,6 +57,7 @@ final class AccountPersistenceMapper {
         BrandProfile brand = row.brandProfile == null ? null : new BrandProfile(
                 new BrandProfileId(UUID.fromString(row.brandProfile.id)), row.brandProfile.businessName,
                 row.brandProfile.description, row.brandProfile.category, row.brandProfile.location);
+        if (brand != null) brand.restoreVersion(row.brandProfile.version);
         CreatorProfile creator = row.creatorProfile == null ? null : new CreatorProfile(
                 new CreatorProfileId(UUID.fromString(row.creatorProfile.id)), row.creatorProfile.displayName,
                 row.creatorProfile.biography, row.creatorProfile.niche, row.creatorProfile.audienceDescription,
@@ -68,6 +69,13 @@ final class AccountPersistenceMapper {
     }
 
     static void update(Account account, AccountJpaEntity entity) {
+        if (account.brandProfile() != null) {
+            var profile = account.brandProfile();
+            var row = entity.brandProfile;
+            if (row.version != profile.version()) throw new jakarta.persistence.OptimisticLockException("Stale brand profile");
+            row.businessName = profile.businessName(); row.description = profile.description();
+            row.category = profile.category(); row.location = profile.location();
+        }
         entity.passwordHash = account.passwordHash();
         if (account.creatorProfile() != null) {
             var profile = account.creatorProfile();
@@ -80,7 +88,11 @@ final class AccountPersistenceMapper {
 
     private static void copySocials(CreatorProfile profile, CreatorProfileJpaEntity row) {
         for (var social : profile.socialMediaAccounts()) {
-            if (row.socials.stream().anyMatch(existing -> existing.id.equals(social.id().value().toString()))) continue;
+            var existing = row.socials.stream().filter(item -> item.id.equals(social.id().value().toString())).findFirst();
+            if (existing.isPresent()) {
+                existing.get().status = social.status().name(); existing.get().username = social.username();
+                continue;
+            }
             var linked = new SocialAccountJpaEntity();
             linked.id = social.id().value().toString(); linked.profile = row; linked.platform = social.platform().code();
             linked.externalAccountId = social.externalAccountId(); linked.username = social.username();

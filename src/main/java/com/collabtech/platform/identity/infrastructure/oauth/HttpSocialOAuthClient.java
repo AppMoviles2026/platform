@@ -64,7 +64,9 @@ public final class HttpSocialOAuthClient implements SocialOAuthClient {
                     if (permission.asText().equals("instagram_business_basic")) basic = true;
                 }
                 if (!basic) denied();
-                granted = token.path("permissions").toString();
+                var names = new java.util.HashSet<String>();
+                for (var permission : token.path("permissions")) names.add(permission.asText());
+                granted = SocialScopes.normalized(names);
             }
             var info = http.get().uri(provider.userInfoUri()).header("Authorization", "Bearer " + access)
                     .retrieve().body(JsonNode.class);
@@ -82,9 +84,11 @@ public final class HttpSocialOAuthClient implements SocialOAuthClient {
             String refresh = token.path("refresh_token").asText("");
             long seconds = token.path("expires_in").asLong(3600);
             if (seconds <= 0) denied();
-            jdbc.update("insert into identity_provider_credentials(credential_id,encrypted_access_token,encrypted_refresh_token,scopes,expires_at) values(?,?,?,?,?)",
+            long refreshSeconds = token.path("refresh_expires_in").asLong(0);
+            jdbc.update("insert into identity_provider_credentials(credential_id,encrypted_access_token,encrypted_refresh_token,scopes,expires_at,refresh_expires_at) values(?,?,?,?,?,?)",
                     receipt.toString(), cipher.encrypt(access), refresh.isBlank() ? null : cipher.encrypt(refresh),
-                    granted.isBlank() ? provider.scopes() : granted, Timestamp.from(clock.instant().plusSeconds(seconds)));
+                    granted.isBlank() ? "instagram_business_basic" : SocialScopes.normalized(SocialScopes.parse(granted)), Timestamp.from(clock.instant().plusSeconds(seconds)),
+                    refreshSeconds > 0 && !refresh.isBlank() ? Timestamp.from(clock.instant().plusSeconds(refreshSeconds)) : null);
             return new AuthorizedAccount(externalId, name, receipt);
         } catch (IdentityFailure failure) { throw failure; }
         catch (org.springframework.web.client.HttpClientErrorException failure) { denied(); return null; }
@@ -95,6 +99,25 @@ public final class HttpSocialOAuthClient implements SocialOAuthClient {
     public void attachCredentials(UUID receipt, SocialMediaAccountId socialId) {
         if (jdbc.update("update identity_provider_credentials set social_id=? where credential_id=? and social_id is null",
                 socialId.value().toString(), receipt.toString()) != 1) throw new IdentityFailure(IdentityFailure.Code.PROVIDER_FAILED);
+    }
+    public boolean replaceUnavailableCredentials(UUID receipt, SocialMediaAccountId socialId) {
+        // Called inside the Account unit of work after checking the verified external identity.
+        var fresh = jdbc.queryForList("select scopes from identity_provider_credentials where credential_id=? and social_id is null", receipt.toString());
+        if (fresh.size() != 1) throw new IdentityFailure(IdentityFailure.Code.PROVIDER_FAILED);
+        var old = jdbc.queryForList("select c.credential_id,c.scopes,c.expires_at,c.reauthorization_required,s.status from identity_provider_credentials c "
+                + "join identity_social_account s on s.social_id=c.social_id where c.social_id=? for update", socialId.value().toString());
+        if (!old.isEmpty()) {
+            var row = old.getFirst();
+            var expiry = (Timestamp) row.get("expires_at");
+            boolean needsConsent = Boolean.TRUE.equals(row.get("reauthorization_required")) || "REVOKED".equals(row.get("status")) || !expiry.toInstant().isAfter(clock.instant());
+            var previousScopes = SocialScopes.parse((String) row.get("scopes"));
+            var newScopes = SocialScopes.parse((String) fresh.getFirst().get("scopes"));
+            // Adding explicitly authorized scopes is legitimate re-consent, not a duplicate association.
+            if (!needsConsent && previousScopes.containsAll(newScopes)) return false;
+            jdbc.update("delete from identity_provider_credentials where credential_id=?", row.get("credential_id"));
+        }
+        attachCredentials(receipt, socialId);
+        return true;
     }
     private Provider configured(SocialPlatform platform) {
         var provider = providers.get(platform.code());

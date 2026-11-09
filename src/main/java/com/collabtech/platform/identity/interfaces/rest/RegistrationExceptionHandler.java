@@ -42,15 +42,21 @@ public class RegistrationExceptionHandler {
     public ResponseEntity<ApiError> identityFailure(IdentityFailure failure) {
         HttpStatus status = switch (failure.code()) {
             case INVALID_CREDENTIALS -> HttpStatus.UNAUTHORIZED;
-            case CREATOR_REQUIRED, ACCOUNT_NOT_ACTIVE, AUTHORIZATION_DENIED -> HttpStatus.FORBIDDEN;
+            case CREATOR_REQUIRED, BRAND_REQUIRED, ACCOUNT_NOT_ACTIVE, AUTHORIZATION_DENIED, SOCIAL_SCOPE_REQUIRED -> HttpStatus.FORBIDDEN;
             case INVALID_RECOVERY_TOKEN, INVALID_OAUTH_STATE -> HttpStatus.BAD_REQUEST;
-            case AUTHORIZATION_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case AUTHORIZATION_NOT_FOUND, SOCIAL_ACCOUNT_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case CONCURRENT_UPDATE, SOCIAL_REAUTHORIZATION_REQUIRED -> HttpStatus.CONFLICT;
             case PROVIDER_NOT_CONFIGURED -> HttpStatus.SERVICE_UNAVAILABLE;
             case PROVIDER_FAILED -> HttpStatus.BAD_GATEWAY;
         };
         String message = switch (failure.code()) {
             case INVALID_CREDENTIALS -> "Credenciales inválidas.";
             case CREATOR_REQUIRED -> "Esta operación requiere una cuenta de creador.";
+            case BRAND_REQUIRED -> "Esta operación requiere una cuenta empresarial.";
+            case CONCURRENT_UPDATE -> "La información cambió. Vuelve a consultarla antes de guardar.";
+            case SOCIAL_ACCOUNT_NOT_FOUND -> "La cuenta social no existe o no pertenece al perfil.";
+            case SOCIAL_REAUTHORIZATION_REQUIRED -> "Vuelve a autorizar la cuenta social para continuar.";
+            case SOCIAL_SCOPE_REQUIRED -> "La autorización social no incluye los permisos requeridos.";
             case ACCOUNT_NOT_ACTIVE -> "La cuenta no está habilitada.";
             case INVALID_RECOVERY_TOKEN -> "El enlace de recuperación no es válido o ha vencido.";
             case INVALID_OAUTH_STATE -> "La autorización no es válida o ha vencido.";
@@ -68,7 +74,8 @@ public class RegistrationExceptionHandler {
         return new ApiError("SOCIAL_ACCOUNT_ALREADY_LINKED", "La cuenta social ya está vinculada a tu perfil.", Map.of());
     }
 
-    @ExceptionHandler({org.springframework.orm.ObjectOptimisticLockingFailureException.class, jakarta.persistence.OptimisticLockException.class})
+    @ExceptionHandler({org.springframework.orm.ObjectOptimisticLockingFailureException.class, jakarta.persistence.OptimisticLockException.class,
+            org.springframework.dao.PessimisticLockingFailureException.class})
     @ResponseStatus(HttpStatus.CONFLICT)
     public ApiError concurrentUpdate() {
         return new ApiError("CONCURRENT_UPDATE", "La información cambió. Vuelve a consultarla antes de guardar.", Map.of());

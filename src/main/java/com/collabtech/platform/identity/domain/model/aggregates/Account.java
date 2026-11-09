@@ -76,6 +76,12 @@ public final class Account extends AggregateRoot<AccountId> {
         passwordHash = encodedPassword;
     }
 
+    public void updateBrandProfile(String name, String description, String category, String location) {
+        if (status != AccountStatus.ACTIVE || accountType != AccountType.BRAND)
+            throw new IllegalStateException("An active brand account is required");
+        brandProfile.updateInformation(name, description, category, location);
+    }
+
     public void updateCreatorProfile(String name, String biography, String niche, String audience, String location) {
         requireActiveCreator();
         creatorProfile.updateInformation(name, biography, niche, audience, location);
@@ -84,6 +90,11 @@ public final class Account extends AggregateRoot<AccountId> {
     public void linkSocialAccount(com.collabtech.platform.identity.domain.model.entities.SocialMediaAccount social) {
         requireActiveCreator();
         creatorProfile.linkSocialMediaAccount(social);
+    }
+    public void renewSocialAccount(com.collabtech.platform.identity.domain.model.valueobjects.SocialMediaAccountId id, String username) {
+        requireActiveCreator();
+        creatorProfile.socialMediaAccounts().stream().filter(s -> s.id().equals(id)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unknown social identity")).renewAuthorization(username);
     }
 
     private void requireActiveCreator() {

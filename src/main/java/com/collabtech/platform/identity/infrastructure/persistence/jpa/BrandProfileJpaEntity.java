@@ -7,6 +7,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 @Entity
 @Table(name = "identity_brand_profile")
@@ -24,6 +25,8 @@ public class BrandProfileJpaEntity {
     String category;
     @Column(length = 150)
     String location;
+    @Version @Column(nullable = false)
+    long version;
 
     protected BrandProfileJpaEntity() {}
 }

@@ -1,6 +1,8 @@
 package com.collabtech.platform.identity.interfaces.rest;
 
 import com.collabtech.platform.identity.application.services.IdentityApplicationService;
+import com.collabtech.platform.identity.application.commands.UpdateBrandProfileCommand;
+import com.collabtech.platform.identity.application.queries.GetBrandProfileQuery;
 import com.collabtech.platform.identity.application.commands.UpdateCreatorProfileCommand;
 import com.collabtech.platform.identity.application.queries.GetUserProfileQuery;
 import com.collabtech.platform.identity.application.queries.GetCurrentAccountQuery;
@@ -20,6 +22,17 @@ import org.springframework.web.bind.annotation.*;
 public class UserProfileController {
     private final IdentityApplicationService identity; private final CurrentActor actor;
     public UserProfileController(IdentityApplicationService identity, CurrentActor actor) { this.identity = identity; this.actor = actor; }
+    @GetMapping("/profiles/me/brand")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Consultar el perfil empresarial propio y su versión")
+    public IdentityResources.BrandProfile brandProfile() {
+        return IdentityResources.brand(identity.handle(new GetBrandProfileQuery(new AccountId(actor.accountId()))));
+    }
+    @PutMapping("/profiles/me/brand")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Actualizar el perfil empresarial", description = "Requiere expectedVersion de la última consulta. Un conflicto devuelve 409 CONCURRENT_UPDATE.")
+    public IdentityResources.BrandProfile updateBrand(@Valid @RequestBody IdentityRequests.BrandProfile request) {
+        return IdentityResources.brand(identity.handle(new UpdateBrandProfileCommand(
+                new AccountId(actor.accountId()), request.businessName(), request.description(), request.category(), request.location(), request.expectedVersion())));
+    }
     @GetMapping("/accounts/me")
     public AccountResource currentAccount() {
         return RegistrationResourceAssembler.toResource(identity.handle(new GetCurrentAccountQuery(new AccountId(actor.accountId()))));
