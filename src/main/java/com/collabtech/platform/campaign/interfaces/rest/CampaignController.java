@@ -31,10 +31,14 @@ public class CampaignController {
         var result = CampaignResources.details(service.create(actor.accountId(), body.title(), body.objective(), body.description(), body.category(), body.targetAudience(), body.location(), key));
         return ResponseEntity.created(URI.create("/api/v1/campaigns/" + result.id())).body(result);
     }
+    @PatchMapping("/{id}")
+    public CampaignResources.Details patch(@PathVariable UUID id, @Valid @RequestBody CampaignRequests.Patch body) {
+        return CampaignResources.details(service.patch(actor.accountId(),new CampaignId(id),body.title(),body.objective(),body.description(),body.category(),body.targetAudience(),body.location(),body.expectedVersion()));
+    }
     @PutMapping("/{id}/conditions")
     public CampaignResources.Details conditions(@PathVariable UUID id, @Valid @RequestBody CampaignRequests.Conditions body) {
         return CampaignResources.details(service.define(actor.accountId(), new CampaignId(id), body.requirements().stream().map(CampaignRequests.Requirement::view).toList(),
-                body.deliverables().stream().map(CampaignRequests.Deliverable::view).toList(), body.applicationDeadline(), body.compensation().value()));
+                body.deliverables().stream().map(CampaignRequests.Deliverable::view).toList(), body.applicationDeadline(), body.compensation().value(), body.expectedVersion()));
     }
     @PostMapping("/{id}/publication")
     public CampaignResources.Details publish(@PathVariable UUID id) { return CampaignResources.details(service.publish(actor.accountId(), new CampaignId(id))); }

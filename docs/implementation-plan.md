@@ -21,7 +21,7 @@ US-01 a US-08 corresponden a la landing y quedan fuera de estos bloques. El cons
 
 ## Bloque 01: alcance de implementación
 
-Estado del código: implementado y verificado el 8 de noviembre de 2026. Los bloques 02–10 continúan pendientes. La verificación contra cuentas reales de redes sociales requiere configurar las aplicaciones externas; se detalla separadamente en los contratos de Identity.
+Estado del código: implementado y verificado el 8 de noviembre de 2026. El bloque 02 también está implementado; los bloques 03–10 continúan pendientes. La verificación contra cuentas reales de redes sociales requiere configurar las aplicaciones externas; se detalla separadamente en los contratos de Identity.
 
 Mensaje sugerido para el commit manual: `feat(identity): complete brand profiles and authorized social access`.
 
@@ -35,6 +35,8 @@ Mensaje sugerido para el commit manual: `feat(identity): complete brand profiles
 ## Escenarios y dependencias de los siguientes bloques
 
 ### 02. Campaign
+
+Estado: implementado. Contratos, compatibilidad y escenarios en [campaign-contracts.md](campaign-contracts.md). Mensaje sugerido para el commit manual: `feat(campaign): implement versioned drafts and application evaluation`.
 
 Depende de 01. Separar metadatos de borradores (US-15), condiciones y fechas/versión (US-16), requisitos/duplicados/edición/cancelación (US-19) y consulta/selección/rechazo empresarial (US-20). Conservar filtros, detalle, disponibilidad y paginación de US-17/18. La selección no activa una colaboración ni rechaza automáticamente a los demás postulantes. Registrar cambios de payload que requieran adaptación móvil.
 

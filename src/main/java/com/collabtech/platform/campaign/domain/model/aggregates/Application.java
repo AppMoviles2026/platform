@@ -24,6 +24,9 @@ public final class Application extends AggregateRoot<ApplicationId> {
     private final Instant submittedAt;
     private final Set<RequirementId> confirmations;
     private long version;
+    private Instant decidedAt;
+    private UUID decidedBy;
+    private String decisionReason;
 
     public Application(ApplicationId id, CampaignId campaignId, CreatorId creatorId, String message, ApplicationStatus status, Instant submittedAt) {
         this(id, campaignId, creatorId, message, status, submittedAt, Set.of());
@@ -51,6 +54,18 @@ public final class Application extends AggregateRoot<ApplicationId> {
         var result = new Application(new ApplicationId(UUID.randomUUID()), campaign.id(), creator, message, ApplicationStatus.PENDING, now, confirmations);
         result.recordEvent(new ApplicationSubmitted(UUID.randomUUID(), now, result.id()));
         return result;
+    }
+    public Instant decidedAt() { return decidedAt; }
+    public UUID decidedBy() { return decidedBy; }
+    public String decisionReason() { return decisionReason; }
+    public void restoreDecision(Instant at, UUID actor, String reason) { decidedAt=at; decidedBy=actor; decisionReason=reason; }
+    public void decide(ApplicationStatus decision, UUID actor, String reason, Instant now, long expectedVersion) {
+        if (version!=expectedVersion) throw new CampaignFailure(CampaignFailure.Code.CONCURRENT_UPDATE);
+        requirePending();
+        if (decision!=ApplicationStatus.SELECTED && decision!=ApplicationStatus.REJECTED) throw new IllegalArgumentException("Invalid decision");
+        String validated=decision==ApplicationStatus.REJECTED ? CampaignText.required(reason,2000) : CampaignText.optional(reason,2000);
+        Objects.requireNonNull(actor); Objects.requireNonNull(now);
+        status=decision; decidedAt=now; decidedBy=actor; decisionReason=validated;
     }
     public void updateMessage(String message) { requirePending(); this.message = CampaignText.required(message, 4000); }
     public void cancel() { requirePending(); this.status = ApplicationStatus.CANCELLED; }

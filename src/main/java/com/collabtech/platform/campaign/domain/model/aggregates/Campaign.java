@@ -19,12 +19,12 @@ import com.collabtech.platform.campaign.domain.events.CampaignPublished;
 public final class Campaign extends AggregateRoot<CampaignId> {
     private static final Instant MAX_DATE = Instant.parse("9999-12-31T23:59:59Z");
     private final BrandId brandId;
-    private final String title;
-    private final String objective;
-    private final String description;
-    private final String category;
-    private final String targetAudience;
-    private final String location;
+    private String title;
+    private String objective;
+    private String description;
+    private String category;
+    private String targetAudience;
+    private String location;
     private CampaignStatus status;
     private Instant publicationDate;
     private Instant applicationDeadline;
@@ -70,6 +70,15 @@ public final class Campaign extends AggregateRoot<CampaignId> {
     public static Campaign draft(BrandId brand, String title, String objective, String description, String category, String audience, String location) {
         return new Campaign(new CampaignId(UUID.randomUUID()), brand, title, objective, description, category, audience, location,
                 CampaignStatus.DRAFT, null, null, List.of(), List.of(), null);
+    }
+    public void updateMetadata(String title, String objective, String description, String category, String audience, String location) {
+        requireDraft();
+        var validated = new Campaign(id(), brandId, title == null ? this.title : title, objective == null ? this.objective : objective,
+                description == null ? this.description : description, category == null ? this.category : category,
+                audience == null ? targetAudience : audience, location == null ? this.location : location,
+                status, publicationDate, applicationDeadline, requirements, deliverables, compensationTerms);
+        this.title=validated.title; this.objective=validated.objective; this.description=validated.description;
+        this.category=validated.category; this.targetAudience=validated.targetAudience; this.location=validated.location;
     }
     public void defineConditions(List<CampaignRequirement> requirements, List<DeliverableSpecification> deliverables,
             Instant applicationDeadline, CompensationTerms compensation, Instant now) {

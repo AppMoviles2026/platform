@@ -10,7 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-@RestControllerAdvice(assignableTypes={CampaignController.class, ApplicationController.class})
+@RestControllerAdvice(assignableTypes={CampaignController.class, ApplicationController.class, ApplicationEvaluationController.class})
 public class CampaignExceptionHandler {
     @ExceptionHandler(CampaignFailure.class)
     public ResponseEntity<ApiError> business(CampaignFailure failure) {

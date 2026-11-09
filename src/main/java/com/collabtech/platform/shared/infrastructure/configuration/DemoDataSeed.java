@@ -115,7 +115,9 @@ public class DemoDataSeed implements ApplicationRunner {
         ensureApplication("30000000-0000-4000-8000-000000000003", campaignThree, creatorTwo.id().value(),
                 "Propongo una receta breve y fácil de replicar, con un video dinámico.", now.minus(Duration.ofHours(8)));
 
-        log.info("CollabPro demo seed is ready (1 brand, 2 creators, 5 campaigns, 3 applications)");
+        ensureDecision("30000000-0000-4000-8000-000000000004", campaignTwo, creatorTwo, brand, ApplicationStatus.SELECTED, null, now);
+        ensureDecision("30000000-0000-4000-8000-000000000005", campaignThree, creatorOne, brand, ApplicationStatus.REJECTED, "La propuesta no coincide con el enfoque de la campaña.", now);
+        log.info("CollabPro demo seed is ready (1 brand, 2 creators, 5 campaigns, 5 applications)");
     }
 
     private Account ensureAccount(UUID accountId, String email, AccountType type, java.time.Instant now,
@@ -145,7 +147,7 @@ public class DemoDataSeed implements ApplicationRunner {
         var deliverables = List.of(new DeliverableSpecification(
                 new SpecificationId(id("70000000-0000-4000-8000-%012d".formatted(index))), contentType,
                 "Contenido publicado y enlace compartido con la marca", 1, deadline.plus(Duration.ofDays(5))));
-        var campaign = new Campaign(campaignId, new BrandId(brandId), title, objective,
+        var campaign = new Campaign(campaignId, new BrandId(accounts.findById(new AccountId(brandId)).orElseThrow().brandProfile().id().value()), title, objective,
                 "Colaboración de demostración de CollabPro. Coordina la propuesta directamente con la marca.",
                 category, audience, location, CampaignStatus.OPEN, now.minus(Duration.ofDays(index)), deadline,
                 requirements, deliverables, new CompensationTerms(compensationType, amount, currency, compensationDescription));
@@ -156,7 +158,7 @@ public class DemoDataSeed implements ApplicationRunner {
     private void ensureDraftCampaign(UUID brandId) {
         var campaignId = new CampaignId(id("40000000-0000-4000-8000-000000000005"));
         if (campaigns.findById(campaignId).isPresent()) return;
-        campaignCatalog.saveNew(new Campaign(campaignId, new BrandId(brandId), "Nueva campaña de temporada",
+        campaignCatalog.saveNew(new Campaign(campaignId, new BrandId(accounts.findById(new AccountId(brandId)).orElseThrow().brandProfile().id().value()), "Nueva campaña de temporada",
                 "Preparar una colaboración para presentar la nueva carta.",
                 "Borrador de demostración: completa condiciones y entregables antes de publicar.",
                 "Food & Beverage", "Personas interesadas en novedades gastronómicas", "Lima, Perú",
@@ -167,10 +169,17 @@ public class DemoDataSeed implements ApplicationRunner {
             java.time.Instant submittedAt) {
         var id = new ApplicationId(UUID.fromString(applicationId));
         if (applications.findById(id).isPresent()) return;
-        applications.save(new Application(id, campaign.id(), new CreatorId(creatorId), message,
+        applications.save(new Application(id, campaign.id(), new CreatorId(accounts.findById(new AccountId(creatorId)).orElseThrow().creatorProfile().id().value()), message,
                 ApplicationStatus.PENDING, submittedAt,
                 Set.of(campaign.requirements().get(1).id())));
     }
 
+    private void ensureDecision(String rawId, Campaign campaign, Account creator, Account brand, ApplicationStatus decision, String reason, java.time.Instant now) {
+        var id=new ApplicationId(UUID.fromString(rawId));
+        if(applications.findById(id).isPresent())return;
+        var application=new Application(id,campaign.id(),new CreatorId(creator.creatorProfile().id().value()),"Propuesta de demostración evaluada",
+                ApplicationStatus.PENDING,now.minus(Duration.ofDays(1)),Set.of(campaign.requirements().get(1).id()));
+        application.decide(decision,brand.id().value(),reason,now,0);applications.save(application);
+    }
     private static UUID id(String value) { return UUID.fromString(value); }
 }

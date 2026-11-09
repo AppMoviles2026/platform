@@ -51,6 +51,26 @@ public final class CampaignPreparationService {
             return details(campaigns.findById(saved).orElseThrow());
         });
     }
+    public CampaignViews.Details patch(UUID account, CampaignId id, String title, String objective, String description, String category, String audience, String location, long version) {
+        return transactions.execute(() -> {
+            var brand=actors.getActiveBrand(account);
+            var campaign=campaigns.findByIdForUpdate(id).orElseThrow(() -> new CampaignFailure(CampaignFailure.Code.CAMPAIGN_NOT_FOUND));
+            if (!campaign.brandId().equals(brand.id())) throw new CampaignFailure(CampaignFailure.Code.FORBIDDEN);
+            if (campaign.version()!=version) throw new CampaignFailure(CampaignFailure.Code.CONCURRENT_UPDATE);
+            campaign.updateMetadata(title,objective,description,category,audience,location);
+            return details(campaigns.save(campaign));
+        });
+    }
+    public CampaignViews.Details define(UUID account, CampaignId id, List<CampaignViews.Requirement> requirements,
+            List<CampaignViews.Deliverable> deliverables, Instant deadline, CompensationTerms compensation, Long version) {
+        return transactions.execute(() -> {
+            var brand=actors.getActiveBrand(account);
+            var campaign=campaigns.findByIdForUpdate(id).orElseThrow(() -> new CampaignFailure(CampaignFailure.Code.CAMPAIGN_NOT_FOUND));
+            if (!campaign.brandId().equals(brand.id())) throw new CampaignFailure(CampaignFailure.Code.FORBIDDEN);
+            if (version!=null && campaign.version()!=version) throw new CampaignFailure(CampaignFailure.Code.CONCURRENT_UPDATE);
+            return define(account,id,requirements,deliverables,deadline,compensation);
+        });
+    }
     public CampaignViews.Details publish(UUID accountId, CampaignId id) {
         return transactions.execute(() -> {
             var saved = publish.handle(new PublishCampaignCommand(actors.getActiveBrand(accountId).id(), id));

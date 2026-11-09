@@ -26,7 +26,7 @@ public class CampaignPersistenceAdapter implements CampaignRepository, CampaignC
         var row = em.find(CampaignJpaEntity.class, campaign.id().value().toString());
         if (row == null || row.version != campaign.version()) throw new OptimisticLockException("Stale campaign");
         CampaignPersistenceMapper.copy(campaign, row);
-        em.lock(row, LockModeType.OPTIMISTIC_FORCE_INCREMENT); em.flush();
+        row.changeSequence++; em.lock(row, LockModeType.OPTIMISTIC); em.flush(); campaign.restoreVersion(row.version);
         return campaign;
     }
     @Transactional(readOnly=true)

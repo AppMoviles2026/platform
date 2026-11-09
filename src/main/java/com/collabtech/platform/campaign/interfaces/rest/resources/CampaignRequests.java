@@ -12,6 +12,9 @@ import java.util.UUID;
 
 public final class CampaignRequests {
     private CampaignRequests() {}
+    public record Patch(@Size(max=200) String title, @Size(max=2000) String objective, @Size(max=5000) String description,
+            @Size(max=100) String category, @Size(max=2000) String targetAudience, @Size(max=150) String location,
+            @NotNull @PositiveOrZero Long expectedVersion) {}
     public record Create(@NotBlank @Size(max=200) String title, @NotBlank @Size(max=2000) String objective,
             @Size(max=5000) String description, @NotBlank @Size(max=100) String category,
             @NotBlank @Size(max=2000) String targetAudience, @Size(max=150) String location) {}
@@ -30,5 +33,5 @@ public final class CampaignRequests {
     }
     public record Conditions(@NotNull @Size(min=1,max=50) List<@NotNull @Valid Requirement> requirements,
             @NotNull @Size(min=1,max=50) List<@NotNull @Valid Deliverable> deliverables,
-            @NotNull Instant applicationDeadline, @NotNull @Valid Compensation compensation) {}
+            @NotNull Instant applicationDeadline, @NotNull @Valid Compensation compensation, @PositiveOrZero Long expectedVersion) {}
 }

@@ -30,6 +30,7 @@ public class ApplicationPersistenceAdapter implements ApplicationRepository,Appl
             if(row.version!=application.version()) throw new CampaignFailure(CampaignFailure.Code.CONCURRENT_UPDATE);
             row.message=application.message(); row.status=application.status().name(); em.lock(row,LockModeType.OPTIMISTIC);
         }
+        row.decidedAt=application.decidedAt(); row.decidedBy=application.decidedBy()==null?null:application.decidedBy().toString(); row.decisionReason=application.decisionReason();
         em.flush(); application.restoreVersion(row.version); return application;
     }
     public Optional<Application> findById(ApplicationId id) { return Optional.ofNullable(em.find(ApplicationJpaEntity.class,id.value().toString())).map(this::domain); }
@@ -52,14 +53,23 @@ public class ApplicationPersistenceAdapter implements ApplicationRepository,Appl
         var row=em.find(ApplicationJpaEntity.class,query.applicationId().value().toString());
         return row==null || !row.creatorId.equals(query.creatorId().value().toString()) ? Optional.empty():Optional.of(view(row));
     }
+    public PageResult<CampaignViews.ApplicationView> byCampaign(CampaignId id, ApplicationStatus status, com.collabtech.platform.shared.application.pagination.PageRequest page) {
+        String filter="a.campaignId=:id"+(status==null?"":" and a.status=:status");
+        var count=em.createQuery("select count(a) from ApplicationJpaEntity a where "+filter,Long.class).setParameter("id",id.value().toString());
+        var rows=em.createQuery("select a from ApplicationJpaEntity a where "+filter+" order by a.submittedAt desc,a.id",ApplicationJpaEntity.class).setParameter("id",id.value().toString());
+        if(status!=null){count.setParameter("status",status.name());rows.setParameter("status",status.name());}
+        long offset=(long)page.page()*page.size(); if(offset>Integer.MAX_VALUE)throw new IllegalArgumentException("Invalid page");
+        return new PageResult<>(rows.setFirstResult((int)offset).setMaxResults(page.size()).getResultList().stream().map(this::view).toList(),count.getSingleResult(),page.page(),page.size());
+    }
     private Application domain(ApplicationJpaEntity row) {
         var result=new Application(new ApplicationId(UUID.fromString(row.id)),new CampaignId(UUID.fromString(row.campaignId)),new CreatorId(UUID.fromString(row.creatorId)),
             row.message,ApplicationStatus.valueOf(row.status),row.submittedAt,row.confirmations.stream().map(id -> new RequirementId(UUID.fromString(id))).collect(Collectors.toSet()));
+        result.restoreDecision(row.decidedAt,row.decidedBy==null?null:UUID.fromString(row.decidedBy),row.decisionReason);
         result.restoreVersion(row.version); return result;
     }
     private CampaignViews.ApplicationView view(ApplicationJpaEntity row) {
         var campaign=em.find(CampaignJpaEntity.class,row.campaignId);
         return new CampaignViews.ApplicationView(UUID.fromString(row.id),UUID.fromString(row.campaignId),UUID.fromString(row.creatorId),campaign.title,campaign.brandName,
-            row.message,row.status,row.submittedAt,row.confirmations.stream().map(UUID::fromString).collect(Collectors.toSet()),row.version);
+            row.message,row.status,row.submittedAt,row.confirmations.stream().map(UUID::fromString).collect(Collectors.toSet()),row.version,row.decidedAt,row.decidedBy==null?null:UUID.fromString(row.decidedBy),row.decisionReason);
     }
 }

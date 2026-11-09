@@ -18,7 +18,7 @@ public final class CampaignResources {
     public record Details(UUID id, UUID brandId, String brandName, String title, String category, String location,
             String objective, String description, String targetAudience, Compensation compensation,
             Instant applicationDeadline, String status, Instant publicationDate, List<Requirement> requirements,
-            List<Deliverable> deliverables, boolean acceptsApplications) {}
+            List<Deliverable> deliverables, boolean acceptsApplications, long version) {}
     private static Compensation compensation(CompensationTerms value) {
         return value == null ? null : new Compensation(value.type().name(), value.amount(), value.currency(), value.description());
     }
@@ -34,6 +34,6 @@ public final class CampaignResources {
         return new Details(info.id(), info.brandId(), info.brandName(), info.title(), info.category(), info.location(),
                 view.objective(), view.description(), view.targetAudience(), compensation(info.compensation()), info.applicationDeadline(),
                 info.status(), view.publicationDate(), view.requirements().stream().map(item -> new Requirement(item.id(), item.description(), item.mandatory(), item.rule().type().name(), item.rule().expectedValue())).toList(),
-                view.deliverables().stream().map(item -> new Deliverable(item.id(), item.contentType(), item.description(), item.quantity(), item.deadline())).toList(), view.acceptsApplications());
+                view.deliverables().stream().map(item -> new Deliverable(item.id(), item.contentType(), item.description(), item.quantity(), item.deadline())).toList(), view.acceptsApplications(), view.version());
     }
 }

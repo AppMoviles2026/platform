@@ -15,6 +15,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @Configuration(proxyBeanMethods=false) @Profile("!skeleton")
 public class CampaignConfiguration {
+    @Bean com.collabtech.platform.campaign.application.services.ApplicationEvaluationService applicationEvaluationService(
+            CampaignActorGateway actors,CampaignUnitOfWork work,CampaignRepository campaigns,ApplicationRepository applications,
+            ApplicationReadRepository reads,ApplicantProfiles profiles,Clock clock){
+        return new com.collabtech.platform.campaign.application.services.ApplicationEvaluationService(actors,work,campaigns,applications,reads,profiles,clock);
+    }
     @Bean CampaignDiscoveryService campaignDiscoveryService(CampaignActorGateway actors, CampaignUnitOfWork transactions, CampaignReadRepository reads, CampaignPreparationService preparation) {
         return new CampaignDiscoveryService(actors, transactions, reads, preparation);
     }

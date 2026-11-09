@@ -31,7 +31,9 @@ class OpenApiDocumentationTests {
                 .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"))
                 .andExpect(jsonPath("$.security[0].bearerAuth").isArray())
                 .andExpect(jsonPath("$.paths['/api/v1/auth/sessions'].post.security").isEmpty())
-                .andExpect(jsonPath("$.paths['/api/v1/accounts/me'].get").exists());
+                .andExpect(jsonPath("$.paths['/api/v1/accounts/me'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/campaigns/{id}'].patch").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/campaigns/{id}/applications/{applicationId}/decision'].post").exists());
         mvc.perform(get("/v3/api-docs"))
                 .andExpect(jsonPath("$.paths['/api/v1/profiles/me/brand'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/profiles/me/brand'].put").exists())

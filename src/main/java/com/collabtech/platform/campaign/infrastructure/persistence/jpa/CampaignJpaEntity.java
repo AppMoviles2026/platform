@@ -26,6 +26,7 @@ public class CampaignJpaEntity {
     @Column(name="compensation_amount", precision=12, scale=2) BigDecimal amount;
     @Column(name="compensation_currency", columnDefinition="CHAR(3)") String currency;
     @Column(name="compensation_description", length=2000) String compensationDescription;
+    @Column(name="change_sequence",nullable=false) long changeSequence;
     @Version @Column(nullable=false) Long version;
     @OneToMany(mappedBy="campaign", cascade=CascadeType.ALL, orphanRemoval=true) @OrderBy("id")
     List<CampaignRequirementJpaEntity> requirements = new ArrayList<>();

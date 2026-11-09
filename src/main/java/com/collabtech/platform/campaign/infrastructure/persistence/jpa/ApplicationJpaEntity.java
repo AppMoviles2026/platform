@@ -16,5 +16,8 @@ public class ApplicationJpaEntity {
     @Version @Column(name="version",nullable=false) long version;
     @ElementCollection @CollectionTable(name="campaign_application_confirmation",joinColumns=@JoinColumn(name="application_id",columnDefinition="char(36)"))
     @Column(name="requirement_id",columnDefinition="char(36)") Set<String> confirmations=new HashSet<>();
+    @JdbcTypeCode(SqlTypes.TIMESTAMP) @Column(name="decided_at",columnDefinition="datetime(6)") Instant decidedAt;
+    @Column(name="decided_by",columnDefinition="char(36)") String decidedBy;
+    @Column(name="decision_reason",length=2000) String decisionReason;
     protected ApplicationJpaEntity() {}
 }

@@ -31,6 +31,11 @@ public class ApplicationController {
     public PageResult<CampaignViews.ApplicationView> mine(@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size) { return service.mine(actor.accountId(),new PageRequest(page,size)); }
     @GetMapping("/applications/{id}")
     public CampaignViews.ApplicationView get(@PathVariable UUID id) { return service.get(actor.accountId(),new ApplicationId(id)); }
+    public record Edit(@NotBlank @Size(max=4000) String message,@NotNull @PositiveOrZero Long expectedVersion) {}
+    @PatchMapping("/applications/{id}")
+    public CampaignViews.ApplicationView edit(@PathVariable UUID id,@Valid @RequestBody Edit body) {
+        return service.update(actor.accountId(),new ApplicationId(id),body.message(),body.expectedVersion());
+    }
     @PutMapping("/applications/{id}")
     public CampaignViews.ApplicationView update(@PathVariable UUID id,@Valid @RequestBody Update body) { return service.update(actor.accountId(),new ApplicationId(id),body.message(),body.expectedVersion()); }
     @PostMapping("/applications/{id}/cancellation")

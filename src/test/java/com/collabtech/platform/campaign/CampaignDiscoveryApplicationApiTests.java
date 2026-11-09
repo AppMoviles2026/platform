@@ -60,6 +60,88 @@ class CampaignDiscoveryApplicationApiTests {
         if(publish) assertEquals(200,call("POST","/api/v1/campaigns/"+id+"/publication",brand.token,null).status);
         return new Fixture(brand,creator,id,defined.body.path("requirements").path(0).path("id").asText(),title);
     }
+
+    @Test void draftPatchPreservesConditionsAndRejectsStalePublishedAndForeignEdits() throws Exception {
+        var f=fixture("MANUAL_CONFIRMATION",null,false,false);String path="/api/v1/campaigns/"+f.campaign;
+        var before=call("GET",path,f.brand.token,null).body; long version=before.path("version").asLong();
+        var patch=json.createObjectNode().put("title","Nuevo titulo").put("expectedVersion",version);
+        var saved=call("PATCH",path,f.brand.token,patch.toString()); assertEquals(200,saved.status);
+        assertTrue(saved.body.path("version").asLong()>version);
+        assertEquals(before.path("requirements"),saved.body.path("requirements"));
+        assertEquals(before.path("deliverables"),saved.body.path("deliverables"));
+        assertEquals(409,call("PATCH",path,f.brand.token,patch.toString()).status);
+        assertEquals(403,call("PATCH",path,account("brands").token,patch.toString()).status);
+        assertEquals(403,call("PATCH",path,f.creator.token,patch.toString()).status);
+        assertEquals(400,call("PATCH",path,f.brand.token,"{\"title\":\"No version\"}").status);
+        patch.put("expectedVersion",saved.body.path("version").asLong()).put("title"," ");
+        assertEquals(400,call("PATCH",path,f.brand.token,patch.toString()).status);
+        var conditions=json.createObjectNode();conditions.set("requirements",json.readTree("[{\"description\":\"Otro\",\"mandatory\":false}]"));
+        conditions.putArray("deliverables").addObject().put("contentType","VIDEO").put("description","Video").put("quantity",1).put("deadline",Instant.now().plusSeconds(7200).toString());
+        conditions.put("applicationDeadline",Instant.now().plusSeconds(3600).toString());
+        conditions.putObject("compensation").put("type","PRODUCT").put("description","Canje"); conditions.put("expectedVersion",version);
+        assertEquals(409,call("PUT",path+"/conditions",f.brand.token,conditions.toString()).status);
+        conditions.put("expectedVersion",saved.body.path("version").asLong());
+        assertEquals(200,call("PUT",path+"/conditions",f.brand.token,conditions.toString()).status);
+        assertEquals(200,call("POST",path+"/publication",f.brand.token,null).status);
+        var latest=call("GET",path,f.brand.token,null).body.path("version").asLong();
+        patch.put("expectedVersion",latest).put("title","Publicado");
+        assertEquals(409,call("PATCH",path,f.brand.token,patch.toString()).status);
+    }
+    @Test void brandEvaluationIsOwnedPagedAuditedAndVisibleToCreator() throws Exception {
+        var f=fixture();var submitted=submit(f,true);assertEquals(201,submitted.status);
+        String id=submitted.body.path("id").asText(),path="/api/v1/campaigns/"+f.campaign+"/applications";
+        var list=call("GET",path+"?status=PENDING&size=1",f.brand.token,null);assertEquals(200,list.status);
+        assertEquals(1,list.body.path("total").asInt());assertEquals(f.creator.profileId,list.body.path("items").get(0).path("creator").path("id").asText());
+        assertFalse(list.body.toString().contains("passwordHash"));assertFalse(list.body.toString().contains("accessToken"));
+        assertEquals(403,call("GET",path,account("brands").token,null).status);
+        assertEquals(403,call("GET",path,f.creator.token,null).status);
+        assertEquals(401,call("GET",path,null,null).status);
+        assertEquals(400,call("GET",path+"?status=INVALID",f.brand.token,null).status);
+        assertEquals(400,call("GET",path+"?size=0",f.brand.token,null).status);
+        assertEquals(404,call("GET",path+"/"+UUID.randomUUID(),f.brand.token,null).status);
+        var decision=json.createObjectNode().put("decision","REJECTED").put("expectedVersion",0);
+        assertEquals(400,call("POST",path+"/"+id+"/decision",f.brand.token,decision.toString()).status);
+        decision.put("reason","No coincide con el objetivo");
+        var result=call("POST",path+"/"+id+"/decision",f.brand.token,decision.toString());
+        assertEquals(200,result.status);assertEquals("REJECTED",result.body.path("application").path("status").asText());
+        var own=call("GET","/api/v1/applications/"+id,f.creator.token,null);
+        assertEquals("No coincide con el objetivo",own.body.path("decisionReason").asText());assertFalse(own.body.path("decidedAt").isNull());
+        assertEquals(409,call("POST",path+"/"+id+"/decision",f.brand.token,decision.toString()).status);
+        assertEquals(0,call("GET",path+"?status=PENDING",f.brand.token,null).body.path("total").asInt());
+        assertEquals(409,call("PUT","/api/v1/applications/"+id,f.creator.token,"{\"message\":\"Edit\",\"expectedVersion\":1}").status);
+    }
+    @Test void concurrentSelectionAndCancellationHaveOneWinner() throws Exception {
+        var f=fixture();var a=submit(f,true);String id=a.body.path("id").asText();
+        String path="/api/v1/campaigns/"+f.campaign+"/applications/"+id;
+        assertEquals(403,call("POST",path+"/decision",account("brands").token,"{\"decision\":\"SELECTED\",\"expectedVersion\":0}").status);
+        var other=fixture();
+        assertEquals(404,call("GET","/api/v1/campaigns/"+other.campaign+"/applications/"+id,other.brand.token,null).status);
+        var barrier=new CyclicBarrier(2);
+        try(var pool=Executors.newFixedThreadPool(2)){
+            var select=pool.submit(()->{barrier.await();return call("POST",path+"/decision",f.brand.token,"{\"decision\":\"SELECTED\",\"expectedVersion\":0}").status;});
+            var cancel=pool.submit(()->{barrier.await();return call("POST","/api/v1/applications/"+id+"/cancellation",f.creator.token,"{\"expectedVersion\":0}").status;});
+            var codes=new ArrayList<>(List.of(select.get(30,TimeUnit.SECONDS),cancel.get(30,TimeUnit.SECONDS)));Collections.sort(codes);assertEquals(List.of(200,409),codes);
+        }
+    }
+
+    @Test void patchApplicationRequiresVersionAndEmptyCampaignListIsValid() throws Exception {
+        var f=fixture();String path="/api/v1/campaigns/"+f.campaign+"/applications";
+        assertEquals(0,call("GET",path,f.brand.token,null).body.path("total").asInt());
+        var submitted=submit(f,true);String own="/api/v1/applications/"+submitted.body.path("id").asText();
+        assertEquals(400,call("PATCH",own,f.creator.token,"{\"message\":\"Cambio\"}").status);
+        assertEquals(200,call("PATCH",own,f.creator.token,"{\"message\":\"Cambio\",\"expectedVersion\":0}").status);
+        assertEquals(409,call("PATCH",own,f.creator.token,"{\"message\":\"Antiguo\",\"expectedVersion\":0}").status);
+        assertEquals("Cambio",call("GET",own,f.creator.token,null).body.path("message").asText());
+    }
+    @Test void selectionDoesNotRejectOtherApplicationsOrCreateCollaboration() throws Exception {
+        var f=fixture();var first=submit(f,true);var second=account("creators");
+        assertEquals(201,call("POST","/api/v1/campaigns/"+f.campaign+"/applications",second.token,proposal(f,true)).status);
+        String path="/api/v1/campaigns/"+f.campaign+"/applications";
+        assertEquals(200,call("POST",path+"/"+first.body.path("id").asText()+"/decision",f.brand.token,"{\"decision\":\"SELECTED\",\"expectedVersion\":0}").status);
+        assertEquals(1,call("GET",path+"?status=PENDING",f.brand.token,null).body.path("total").asInt());
+        assertEquals(1,call("GET",path+"?status=SELECTED",f.brand.token,null).body.path("total").asInt());
+    }
+
     private Fixture fixture() throws Exception { return fixture("MANUAL_CONFIRMATION",null,true,true); }
     private String proposal(Fixture f,boolean confirm) {
         var body=json.createObjectNode().put("message","Mi propuesta");

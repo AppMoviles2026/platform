@@ -12,6 +12,6 @@ public final class CampaignViewMapper {
         return new CampaignViews.Details(summary(campaign, brandName, now), campaign.objective(), campaign.description(), campaign.targetAudience(),
                 campaign.requirements().stream().map(item -> new CampaignViews.Requirement(item.id().value(), item.description(), item.mandatory(), item.rule())).toList(),
                 campaign.deliverables().stream().map(item -> new CampaignViews.Deliverable(item.id().value(), item.contentType(), item.description(), item.quantity(), item.deadline())).toList(),
-                campaign.acceptsApplications(now), campaign.publicationDate());
+                campaign.acceptsApplications(now), campaign.publicationDate(), campaign.version());
     }
 }
