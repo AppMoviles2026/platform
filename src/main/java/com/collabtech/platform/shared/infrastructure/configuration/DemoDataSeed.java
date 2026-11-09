@@ -33,6 +33,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /** Opt-in sample data for local demos and explicitly enabled demo deployments. */
 @Component
+@org.springframework.core.annotation.Order(0)
 @Profile("!skeleton")
 @ConditionalOnProperty(name = "collabpro.demo-seed.enabled", havingValue = "true")
 public class DemoDataSeed implements ApplicationRunner {

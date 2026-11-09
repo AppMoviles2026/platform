@@ -32,6 +32,13 @@ class OpenApiDocumentationTests {
                 .andExpect(jsonPath("$.security[0].bearerAuth").isArray())
                 .andExpect(jsonPath("$.paths['/api/v1/auth/sessions'].post.security").isEmpty())
                 .andExpect(jsonPath("$.paths['/api/v1/accounts/me'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/agreements'].post.responses['201']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/agreements/{id}'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/agreements/mine'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/agreements/{id}/decisions'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/collaborations'].post.responses['201']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/collaborations/mine'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/collaborations/{id}'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/campaigns/{id}'].patch").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/campaigns/{id}/applications/{applicationId}/decision'].post").exists());
         mvc.perform(get("/v3/api-docs"))

@@ -52,7 +52,7 @@ V9 agrega auditoría e índice de evaluación y un marcador de modificación de 
 
 También se corrigen únicamente los cinco IDs conocidos de campañas demo cuyo propietario guardaba el ID de cuenta en lugar del perfil empresarial.
 
-El seed conserva registros existentes y añade dos postulaciones evaluadas, una seleccionada y otra rechazada. No crea acuerdos ni pagos ficticios. La base habitual y las cuentas demo no se alteran durante la suite: `scripts/test-mysql.ps1` utiliza los servicios aislados de `compose.test.yaml`.
+El seed conserva registros existentes y añade dos postulaciones evaluadas, una seleccionada y otra rechazada. El runner de Campaign no crea acuerdos ni pagos. Desde el bloque 03, un runner posterior de Collaboration añade por separado un acuerdo bilateral y una colaboración de demostración; ver [collaboration-contracts.md](collaboration-contracts.md). La base habitual y las cuentas demo no se alteran durante la suite: `scripts/test-mysql.ps1` utiliza los servicios aislados de `compose.test.yaml`.
 
 ## Verificación
 

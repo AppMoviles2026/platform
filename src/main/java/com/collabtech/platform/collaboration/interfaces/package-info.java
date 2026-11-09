@@ -1,4 +1,4 @@
 /**
- * Reserved for REST resources, DTO mapping and published context facades. No endpoints registered by this scaffold.
+ * Authorized agreement/collaboration REST contracts and published integration event consumer interface.
  */
 package com.collabtech.platform.collaboration.interfaces;

@@ -1,4 +1,4 @@
 /**
- * Reserved for persistence/external adapters and composition. No fake repositories or provider integrations.
+ * JPA persistence, context ACL adapters, transactional event delivery and scheduled lifecycle jobs.
  */
 package com.collabtech.platform.collaboration.infrastructure;

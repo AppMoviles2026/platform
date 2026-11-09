@@ -1,4 +1,4 @@
 /**
- * Collaboration Management: future Collaboration, AgreementSnapshot, Deliverable, Evidence, Review and Incident. Outside backlog positions 1-18.
+ * Collaboration Management: bilateral agreements and collaboration lifecycle (US-21/22). Deliveries, reviews and incidents extend this context in later blocks.
  */
 package com.collabtech.platform.collaboration;
