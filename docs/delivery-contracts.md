@@ -1,6 +1,6 @@
 # Collaboration: bloque 04 — entregas y revisión
 
-Implementa US-23, US-24, los escenarios 3–4 de TS-04 y 1–2 de TS-05, sobre los acuerdos del [bloque 03](collaboration-contracts.md). Se conservan dominio puro, aplicación con puertos, infraestructura y REST. Incidencias/historial global permanecen en el bloque 05; compensaciones y pagos pertenecen a Billing.
+Implementa US-23, US-24, los escenarios 3–4 de TS-04 y 1–2 de TS-05, sobre los acuerdos del [bloque 03](collaboration-contracts.md). Se conservan dominio puro, aplicación con puertos, infraestructura y REST. Incidencias/historial global se implementan en el [bloque 05](incident-history-contracts.md); compensaciones y pagos pertenecen a Billing.
 
 ## Reglas de ejecución
 
@@ -8,7 +8,7 @@ Una obligación del acuerdo puede exigir varias piezas. Por ejemplo, dos videos 
 
 **Regla confirmada por el usuario:** un rechazo debe incluir observaciones y una nueva fecha límite futura para corregir. La corrección debe llegar antes de ese instante, que es exclusivo. No hay un número arbitrario de rondas: cada nuevo rechazo puede fijar otro plazo. Una revisión aprobada es definitiva; no se modifica ni se reemplaza mediante estos endpoints.
 
-Las primeras entregas se admiten también después de su fecha original y quedan marcadas con `late=true`. Las correcciones conservan esa referencia a la fecha original; la ampliación no reescribe las condiciones ni borra la tardanza. Una corrección presentada una vez vencido su nuevo plazo devuelve `409 CORRECTION_WINDOW_CLOSED`. El tratamiento posterior del desacuerdo corresponde al bloque de incidencias.
+Las primeras entregas se admiten también después de su fecha original y quedan marcadas con `late=true`. Las correcciones conservan esa referencia a la fecha original; la ampliación no reescribe las condiciones ni borra la tardanza. Una corrección presentada una vez vencido su nuevo plazo devuelve `409 CORRECTION_WINDOW_CLOSED`. El bloque 05 permite acordar bilateralmente una ampliación posterior mediante una incidencia; conserva el plazo de rechazo original y registra la ampliación por separado.
 
 El contenido debe tener una referencia y entre una y diez evidencias distintas. Cada referencia contiene exactamente un `url` HTTPS completo o un `assetId` autorizado. Las notas son opcionales, hasta 4000 caracteres. El servidor conserva las referencias y archivos; no descarga enlaces externos ni afirma que una publicación sea auténtica por haber recibido su URL. La empresa contrasta la evidencia con las condiciones antes de aprobar.
 
@@ -101,7 +101,7 @@ El resumen de colaboración añade cantidades presentadas, pendientes de validac
 - Vence una acción de entrega/corrección pendiente: `EXPIRED`.
 - Una entrega tardía puede pasar a revisión conservando `late` y `expiredAt`.
 - Todas las cantidades aprobadas: `COMPLETED` con fecha del servidor. Un rechazo o una pieza sin aprobar impiden completar.
-- `CANCELLED` y `DISPUTED` bloquean modificaciones; esos comandos se abordarán en bloques posteriores.
+- `CANCELLED` y `DISPUTED` bloquean modificaciones; el bloque 05 deriva la disputa por incidencias abiertas y permite una cancelación mutuamente aceptada mediante resolución.
 
 `pendingActions` distingue `SUBMIT_DELIVERABLE`, `SUBMIT_LATE_DELIVERABLE`, `CORRECT_DELIVERABLE`, `CORRECTION_WINDOW_EXPIRED`, `WAIT_FOR_REVIEW`, `REVIEW_DELIVERABLE`, `WAIT_FOR_DELIVERY` y `WAIT_FOR_CORRECTION`, según el participante.
 
@@ -140,12 +140,12 @@ Se elimina la restricción por agregado/tipo del outbox: una colaboración puede
 
 Se publican `DeliverableSubmitted`, `DeliverableRevisionSubmitted`, `DeliverableApproved`, `DeliverableRejected` y `CollaborationCompleted`, además de los vencimientos. Los eventos de entrega contienen identificadores de pieza y versión, actor, fecha y snapshot; los eventos de colaboración conservan el payload de condiciones del bloque 03. Aprobar o completar **no confirma un pago**: los consumidores de Billing se implementarán posteriormente.
 
-El seed explícito agrega una entrega para la colaboración demo de la marca y `demo.creator2@collabpro.app`, con rechazo y plazo históricos y una versión corregida pendiente de revisión. Si una base demo tiene acordadas dos o más piezas, presenta una rechazada y otra pendiente; conserva siempre las cantidades del snapshot. Si ya existen entregas, conserva todas sus versiones y decisiones. Los enlaces example.com son ilustrativos, no publicaciones reales. No modifica colaboraciones cerradas ni habilita accesos externos ficticios.
+El seed explícito agrega una entrega para la colaboración demo de la marca y `demo.creator2@collabpro.app`, con rechazo y plazo históricos y una versión corregida pendiente de revisión. Si una base demo tiene acordadas dos o más piezas, presenta una rechazada y otra pendiente; conserva siempre las cantidades del snapshot. Si ya existen entregas, conserva todas sus versiones y decisiones. Los enlaces example.com son ilustrativos, no publicaciones reales. El runner posterior del bloque 05 agrega una incidencia demo resuelta sin dejar bloqueos pendientes. No modifica colaboraciones cerradas ni habilita accesos externos ficticios.
 
 ## Verificación
 
 Pruebas de dominio y HTTP para US-23/24, contratos TS-04/05, cantidades, roles/JWT, fechas originales y correcciones, aprobaciones parciales/finales, versiones antiguas, historial y paginación, claves repetidas/conflictivas, concurrencia, rollback, archivos privados/históricos, formatos/tamaño y seed. Se verifican migraciones incrementales y Swagger, con regresión de las funcionalidades anteriores.
 
-Resultado del 9 de noviembre de 2026: **245 pruebas aprobadas** en la suite completa con MySQL 8.4/Mailpit, sin fallos, errores ni omisiones; las pruebas dedicadas de actualización usan H2. La regresión completa con H2 también terminó sin fallos: 244 aprobadas y una prueba de correo omitida por requerir Mailpit. Se verificaron los diez endpoints nuevos y la descarga binaria en OpenAPI. Los servicios de prueba aislados se detuvieron al finalizar.
+Verificación al cerrar el bloque 04, el 9 de noviembre de 2026: **245 pruebas aprobadas** en la suite completa con MySQL 8.4/Mailpit, sin fallos, errores ni omisiones; las pruebas dedicadas de actualización usan H2. La regresión completa con H2 también terminó sin fallos: 244 aprobadas y una prueba de correo omitida por requerir Mailpit. Se verificaron los diez endpoints nuevos y la descarga binaria en OpenAPI. Los servicios de prueba aislados se detuvieron al finalizar.
 
 Android y el despliegue Azure se actualizan por separado; este bloque implementa y documenta el backend.

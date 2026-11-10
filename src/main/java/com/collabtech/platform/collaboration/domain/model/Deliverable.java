@@ -38,7 +38,11 @@ public final class Deliverable {
             }
         }
     }
-    public record Revision(Submission submission, Review review) {}
+    public record CorrectionExtension(UUID id, UUID submissionId, UUID resolutionId, Instant previousDeadline,
+                                      Instant deadline, UUID proposedBy, UUID acceptedBy, Instant acceptedAt) {}
+    public record Revision(Submission submission, Review review, java.util.List<CorrectionExtension> correctionExtensions) {
+        public Revision(Submission submission, Review review) { this(submission,review,java.util.List.of()); }
+    }
 
     private final UUID id, collaborationId, obligationId;
     private final int pieceNumber;
@@ -46,9 +50,16 @@ public final class Deliverable {
     private Submission submission;
     private Review review;
     private long version;
+    private Instant correctionDeadlineOverride;
 
     public Deliverable(UUID id, UUID collaborationId, UUID obligationId, int pieceNumber,
                        Instant createdAt, Submission submission, Review review, long version) {
+        this(id, collaborationId, obligationId, pieceNumber, createdAt, submission, review, null, version);
+    }
+
+    public Deliverable(UUID id, UUID collaborationId, UUID obligationId, int pieceNumber,
+                       Instant createdAt, Submission submission, Review review, Instant correctionDeadlineOverride, long version) {
+        this.correctionDeadlineOverride = correctionDeadlineOverride;
         this.id = Objects.requireNonNull(id);
         this.collaborationId = Objects.requireNonNull(collaborationId);
         this.obligationId = Objects.requireNonNull(obligationId);
@@ -79,13 +90,29 @@ public final class Deliverable {
     public void revise(long expectedVersion, DeliveryContent content, UUID actor, Instant originalDeadline, Instant now) {
         requireVersion(expectedVersion);
         if (status() != Status.REJECTED) throw new CollaborationFailure(Code.REVISION_NOT_ALLOWED);
-        if (review.correctionDeadline() != null && !now.isBefore(review.correctionDeadline())) {
+        if (effectiveCorrectionDeadline() != null && !now.isBefore(effectiveCorrectionDeadline())) {
             throw new CollaborationFailure(Code.CORRECTION_WINDOW_CLOSED);
         }
         submission = new Submission(UUID.randomUUID(), Math.addExact(submission.revision(), 1), actor, now,
                 !now.isBefore(originalDeadline), content);
         review = null;
+        correctionDeadlineOverride = null;
     }
+
+    public Instant effectiveCorrectionDeadline() {
+        return review == null || status() != Status.REJECTED ? null
+                : correctionDeadlineOverride == null ? review.correctionDeadline() : correctionDeadlineOverride;
+    }
+
+    public void extendCorrection(UUID submissionId, long expectedVersion, Instant deadline, Instant now) {
+        requireVersion(expectedVersion);
+        if (status() != Status.REJECTED || !submission.id().equals(submissionId)) throw new CollaborationFailure(Code.RESOLUTION_STALE);
+        deadline = Objects.requireNonNull(deadline).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        if (!deadline.isAfter(now) || !deadline.isAfter(effectiveCorrectionDeadline())) throw new CollaborationFailure(Code.RESOLUTION_STALE);
+        correctionDeadlineOverride = deadline;
+    }
+
+    public Instant correctionDeadlineOverride() { return correctionDeadlineOverride; }
 
     private void requireVersion(long expected) {
         if (version != expected) throw new CollaborationFailure(Code.CONCURRENT_UPDATE);

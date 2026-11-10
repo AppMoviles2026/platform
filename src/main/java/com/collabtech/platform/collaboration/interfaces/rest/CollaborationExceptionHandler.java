@@ -8,7 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-@RestControllerAdvice(assignableTypes={CollaborationController.class,DeliveryController.class})
+@RestControllerAdvice(assignableTypes={CollaborationController.class,DeliveryController.class,IncidentController.class,CollaborationHistoryController.class})
 public class CollaborationExceptionHandler {
     @ExceptionHandler(CollaborationFailure.class)
     public ResponseEntity<ApiError> failure(CollaborationFailure error){
@@ -19,6 +19,12 @@ public class CollaborationExceptionHandler {
             case TERMS_EXPIRED->"Venció el plazo para aceptar estas condiciones.";case TERMS_CHANGED->"La versión de condiciones no coincide. Vuelve a consultar el acuerdo.";
             case AGREEMENT_CLOSED->"El acuerdo ya tiene una decisión definitiva.";case DECISION_ALREADY_RECORDED->"Tu decisión ya fue registrada.";
             case AGREEMENT_NOT_ACCEPTED->"Ambas partes deben aceptar las condiciones antes de iniciar la colaboración.";
+            case INCIDENT_WINDOW_CLOSED->"Venció el plazo de siete días para abrir una incidencia.";
+            case INCIDENT_RESOLVED->"La incidencia ya está resuelta.";
+            case RESOLUTION_PENDING->"Existe una propuesta pendiente de decisión.";
+            case STALE_RESOLUTION->"La propuesta indicada ya no es la propuesta pendiente.";
+            case RESOLUTION_STALE->"La propuesta perdió vigencia o su entrega cambió. Deben acordar una propuesta nueva.";
+            case RESOLUTION_INAPPLICABLE->"La resolución no se puede aplicar al estado actual de la colaboración.";
             case COLLABORATION_CLOSED->"La colaboración no permite modificar entregas.";
             case QUANTITY_EXCEEDED->"Ya se registraron todas las piezas de esta obligación. Corrige una entrega rechazada.";
             case STALE_SUBMISSION->"La revisión no corresponde a la versión actual de la entrega.";

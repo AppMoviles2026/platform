@@ -18,7 +18,7 @@ public final class DeliveryService {
                              String observations, Instant correctionDeadline) {}
     public record View(UUID id, UUID collaborationId, UUID obligationId, int pieceNumber, long version,
                        Deliverable.Status status, Instant createdAt, Deliverable.Submission currentSubmission,
-                       Deliverable.Review currentReview, List<String> availableActions) {}
+                       Deliverable.Review currentReview, List<String> availableActions, Instant effectiveCorrectionDeadline) {}
     /** Current resource plus the immutable submission affected by this request, also on a replay. */
     public record Result(View deliverable, UUID affectedSubmissionId, boolean replayed) {}
     public record AssetView(Asset asset, String downloadPath) {}
@@ -224,9 +224,9 @@ public final class DeliveryService {
             actions.add("APPROVE_DELIVERABLE"); actions.add("REJECT_DELIVERABLE");
         }
         if (open && actor.party()==Agreement.Party.CREATOR && d.status()==Deliverable.Status.REJECTED
-                && clock.instant().isBefore(d.review().correctionDeadline())) actions.add("SUBMIT_REVISION");
+                && clock.instant().isBefore(d.effectiveCorrectionDeadline())) actions.add("SUBMIT_REVISION");
         return new View(d.id(),d.collaborationId(),d.obligationId(),d.pieceNumber(),d.version(),d.status(),
-                d.createdAt(),d.submission(),d.review(),List.copyOf(actions));
+                d.createdAt(),d.submission(),d.review(),List.copyOf(actions),d.effectiveCorrectionDeadline());
     }
     private AssetView assetView(Asset asset) { return new AssetView(asset,"/api/v1/collaboration-assets/"+asset.id()+"/content"); }
 }

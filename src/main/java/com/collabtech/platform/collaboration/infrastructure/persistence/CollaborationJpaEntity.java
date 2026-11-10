@@ -16,6 +16,8 @@ public class CollaborationJpaEntity {
     @JdbcTypeCode(SqlTypes.TIMESTAMP) @Column(name="next_deadline",columnDefinition="datetime(6)") Instant deadline;
     @JdbcTypeCode(SqlTypes.TIMESTAMP) @Column(name="expired_at",columnDefinition="datetime(6)") Instant expiredAt;
     @JdbcTypeCode(SqlTypes.TIMESTAMP) @Column(name="completed_at",columnDefinition="datetime(6)") Instant completedAt;
+    @JdbcTypeCode(SqlTypes.TIMESTAMP) @Column(name="cancelled_at",columnDefinition="datetime(6)") Instant cancelledAt;
+    @Column(name="open_incident_count",nullable=false) int openIncidentCount;
     @Version @Column(nullable=false) long version;
     protected CollaborationJpaEntity(){}
 }

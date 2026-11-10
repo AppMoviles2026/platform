@@ -19,7 +19,7 @@ public final class CollaborationService {
             Instant creatorAcceptedAt,UUID creatorAcceptedBy,Instant decidedAt,UUID rejectedBy,long version,UUID collaborationId,List<String> availableActions){}
     public record Progress(UUID deliverableId,UUID specificationId,String contentType,String description,int requiredQuantity,int approvedQuantity,Instant deadline,boolean overdue,int submittedQuantity,int pendingValidationQuantity,int rejectedQuantity,Instant correctionDeadline,Instant nextActionDeadline){}
     public record CollaborationView(UUID id,UUID agreementId,AgreementSnapshot snapshot,Collaboration.Status status,Instant startedAt,Instant expiredAt,
-            long version,Instant nextDeadline,int requiredQuantity,int approvedQuantity,List<Progress> deliverables,List<String> pendingActions,List<String> availableActions,int submittedQuantity,int pendingValidationQuantity,int rejectedQuantity,Instant completedAt){}
+            long version,Instant nextDeadline,int requiredQuantity,int approvedQuantity,List<Progress> deliverables,List<String> pendingActions,List<String> availableActions,int submittedQuantity,int pendingValidationQuantity,int rejectedQuantity,Instant completedAt,Instant cancelledAt,int openIncidentCount,boolean canOpenIncident,Instant incidentWindowClosesAt){}
     public AgreementView propose(UUID account,UUID application){return work.execute(()->{
         var actor=participants.actor(account);var snapshot=terms.capture(account,application,clock.instant());
         var existing=agreements.byApplication(application,true);
@@ -99,7 +99,13 @@ public final class CollaborationService {
             if(submitted<required)pending.add("WAIT_FOR_DELIVERY");
             if(rejected>0)pending.add("WAIT_FOR_CORRECTION");
         }
+        var incidentPolicy=new IncidentPolicy();
+        boolean canOpenIncident=incidentPolicy.canOpen(c,now);
+        if(canOpenIncident)actions.add("OPEN_INCIDENT");
+        if(c.openIncidentCount()>0){pending.add("RESOLVE_INCIDENTS");actions.add("VIEW_INCIDENTS");}
+        if(canOpenIncident||c.openIncidentCount()>0)actions.add("UPLOAD_INCIDENT_EVIDENCE");
+        actions.add("VIEW_HISTORY");
         return new CollaborationView(c.id(),c.agreementId(),c.snapshot(),status,c.startedAt(),c.expiredAt(),c.version(),c.nextDeadline(),required,approved,
-                c.obligations().stream().map(d->new Progress(d.id(),d.specificationId(),d.contentType(),d.description(),d.quantity(),d.approvedQuantity(),d.deadline(),d.nextActionDeadline()!=null&&!d.nextActionDeadline().isAfter(now),d.submittedQuantity(),d.pendingQuantity(),d.rejectedQuantity(),d.correctionDeadline(),d.nextActionDeadline())).toList(),List.copyOf(pending),List.copyOf(actions),submitted,reviewing,rejected,c.completedAt());
+                c.obligations().stream().map(d->new Progress(d.id(),d.specificationId(),d.contentType(),d.description(),d.quantity(),d.approvedQuantity(),d.deadline(),d.nextActionDeadline()!=null&&!d.nextActionDeadline().isAfter(now),d.submittedQuantity(),d.pendingQuantity(),d.rejectedQuantity(),d.correctionDeadline(),d.nextActionDeadline())).toList(),List.copyOf(pending),List.copyOf(actions),submitted,reviewing,rejected,c.completedAt(),c.cancelledAt(),c.openIncidentCount(),canOpenIncident,incidentPolicy.closesAt(c));
     }
 }

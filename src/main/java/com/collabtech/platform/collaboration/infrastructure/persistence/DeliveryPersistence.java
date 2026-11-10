@@ -19,6 +19,7 @@ import tools.jackson.databind.ObjectMapper;
 public final class DeliveryPersistence implements DeliverableRepository, Queries, Attachments, Commands {
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
+    private final HistoryPersistence history;
     private static final String CURRENT = """
             select d.*,s.submission_id,s.revision,s.submitted_by,s.submitted_at,s.late,s.content,
             r.review_id,r.reviewed_by,r.reviewed_at,r.decision,r.observations,r.correction_deadline
@@ -27,7 +28,8 @@ public final class DeliveryPersistence implements DeliverableRepository, Queries
             left join collaboration_review r on r.submission_id=s.submission_id
             """;
 
-    public DeliveryPersistence(JdbcTemplate jdbc, ObjectMapper json) { this.jdbc = jdbc; this.json = json; }
+    public DeliveryPersistence(JdbcTemplate jdbc, ObjectMapper json) { this(jdbc,json,new HistoryPersistence(jdbc,json)); }
+    public DeliveryPersistence(JdbcTemplate jdbc,ObjectMapper json,HistoryPersistence history) { this.jdbc=jdbc;this.json=json;this.history=history; }
     public Optional<Deliverable> byId(UUID id) {
         return jdbc.query(CURRENT+" where d.deliverable_id=?", this::piece, id.toString()).stream().findFirst();
     }
@@ -68,9 +70,9 @@ public final class DeliveryPersistence implements DeliverableRepository, Queries
         }
         if (!create) {
             int changed = jdbc.update("""
-                    update collaboration_deliverable set current_revision=?,status=?,updated_at=?,version=version+1
+                    update collaboration_deliverable set current_revision=?,status=?,updated_at=?,correction_deadline_override=?,version=version+1
                     where deliverable_id=? and version=?
-                    """, s.revision(), d.status().name(), time(r == null ? s.submittedAt() : r.reviewedAt()), d.id().toString(), d.version());
+                    """, s.revision(), d.status().name(), time(r == null ? s.submittedAt() : r.reviewedAt()), time(d.correctionDeadlineOverride()), d.id().toString(), d.version());
             if (changed != 1) throw new CollaborationFailure(Code.CONCURRENT_UPDATE);
             d.restoreVersion(d.version()+1);
         }
@@ -91,7 +93,7 @@ public final class DeliveryPersistence implements DeliverableRepository, Queries
                 from collaboration_submission s left join collaboration_review r on r.submission_id=s.submission_id
                 where s.deliverable_id=? order by s.revision desc
                 """+" limit "+page.size()+" offset "+offset(page),
-                (r,i)->new Deliverable.Revision(submission(r), review(r)), deliverable.toString());
+                (r,i)->new Deliverable.Revision(submission(r), review(r),extensions(uuid(r,"submission_id"))), deliverable.toString());
         return new PageResult<>(rows, count, page.page(), page.size());
     }
     public Optional<Deliverable> bySubmission(UUID id) {
@@ -113,12 +115,15 @@ public final class DeliveryPersistence implements DeliverableRepository, Queries
                 values(?,?,?,?,?,?,?,?,?)
                 """, a.id().toString(),a.collaborationId().toString(),a.ownerAccountId().toString(),a.filename(),a.mediaType(),
                 a.byteSize(),a.sha256(),time(a.createdAt()),bytes);
+        history.record(a.collaborationId(),"AssetUploaded",a.id(),a.ownerAccountId(),a.createdAt(),
+                Map.of("assetId",a.id()));
     }
     public byte[] bytes(UUID id) {
         return jdbc.queryForObject("select bytes from collaboration_asset where asset_id=?", byte[].class, id.toString());
     }
     public boolean referenced(UUID id) {
-        return jdbc.queryForObject("select count(*) from collaboration_submission_asset where asset_id=?", Integer.class, id.toString()) > 0;
+        return jdbc.queryForObject("select (select count(*) from collaboration_submission_asset where asset_id=?)+(select count(*) from collaboration_incident_asset where asset_id=?)",
+                Integer.class, id.toString(),id.toString()) > 0;
     }
     public Optional<Command> find(UUID collaboration, UUID actor, UUID request) {
         return jdbc.query("""
@@ -138,9 +143,14 @@ public final class DeliveryPersistence implements DeliverableRepository, Queries
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(json.writeValueAsString(value).getBytes(StandardCharsets.UTF_8)));
         } catch (java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
     }
+    private List<Deliverable.CorrectionExtension> extensions(UUID submission) {
+        return jdbc.query("select * from collaboration_correction_extension where submission_id=? order by accepted_at,extension_id",
+                (r,i)->new Deliverable.CorrectionExtension(uuid(r,"extension_id"),uuid(r,"submission_id"),uuid(r,"resolution_id"),
+                        instant(r,"previous_deadline"),instant(r,"deadline"),uuid(r,"proposed_by"),uuid(r,"accepted_by"),instant(r,"accepted_at")),submission.toString());
+    }
     private Deliverable piece(ResultSet r, int i) throws SQLException {
         return new Deliverable(uuid(r,"deliverable_id"),uuid(r,"collaboration_id"),uuid(r,"obligation_id"),r.getInt("piece_number"),
-                instant(r,"created_at"),submission(r),review(r),r.getLong("version"));
+                instant(r,"created_at"),submission(r),review(r),instant(r,"correction_deadline_override"),r.getLong("version"));
     }
     private Deliverable.Submission submission(ResultSet r) throws SQLException {
         return new Deliverable.Submission(uuid(r,"submission_id"),r.getInt("revision"),uuid(r,"submitted_by"),

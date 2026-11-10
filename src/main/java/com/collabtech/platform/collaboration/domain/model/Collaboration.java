@@ -38,7 +38,8 @@ public final class Collaboration {
     private final Instant startedAt;
     private List<Obligation> obligations;
     private Status status;
-    private Instant expiredAt, completedAt;
+    private Instant expiredAt, completedAt, cancelledAt;
+    private int openIncidentCount;
     private long version;
 
     public Collaboration(UUID id, UUID agreementId, AgreementSnapshot snapshot, Instant startedAt, Status status,
@@ -48,11 +49,18 @@ public final class Collaboration {
 
     public Collaboration(UUID id, UUID agreementId, AgreementSnapshot snapshot, Instant startedAt, Status status,
                          List<Obligation> obligations, Instant expiredAt, Instant completedAt, long version) {
+        this(id, agreementId, snapshot, startedAt, status, obligations, expiredAt, completedAt, null, 0, version);
+    }
+
+    public Collaboration(UUID id, UUID agreementId, AgreementSnapshot snapshot, Instant startedAt, Status status,
+                         List<Obligation> obligations, Instant expiredAt, Instant completedAt, Instant cancelledAt,
+                         int openIncidentCount, long version) {
         this.id = Objects.requireNonNull(id); this.agreementId = Objects.requireNonNull(agreementId);
         this.snapshot = Objects.requireNonNull(snapshot); this.startedAt = Objects.requireNonNull(startedAt);
         this.status = Objects.requireNonNull(status); this.obligations = List.copyOf(obligations);
-        this.expiredAt = expiredAt; this.completedAt = completedAt; this.version = version;
-        if (obligations.isEmpty() || version < 0) throw new IllegalArgumentException("Invalid collaboration");
+        this.expiredAt = expiredAt; this.completedAt = completedAt; this.cancelledAt = cancelledAt;
+        this.openIncidentCount = openIncidentCount; this.version = version;
+        if (obligations.isEmpty() || version < 0 || openIncidentCount < 0) throw new IllegalArgumentException("Invalid collaboration");
     }
 
     public static Collaboration start(Agreement agreement) {
@@ -66,7 +74,7 @@ public final class Collaboration {
     }
 
     public void requireExecutionOpen() {
-        if (status == Status.COMPLETED || status == Status.CANCELLED || status == Status.DISPUTED) {
+        if (openIncidentCount > 0 || status == Status.COMPLETED || status == Status.CANCELLED || status == Status.DISPUTED) {
             throw new CollaborationFailure(Code.COLLABORATION_CLOSED);
         }
     }
@@ -74,6 +82,25 @@ public final class Collaboration {
     /** Called with the parent's write lock and all its current pieces, after one execution change. */
     public void reconcile(List<Deliverable> pieces, Instant now) {
         requireExecutionOpen();
+        updateProgress(pieces);
+        deriveStatus(now);
+    }
+
+    public void refreshAfterIncidents(List<Deliverable> pieces, int openCount, Instant now) {
+        if (openCount < 0) throw new IllegalArgumentException("Invalid incident count");
+        openIncidentCount = openCount;
+        updateProgress(pieces);
+        deriveStatus(now);
+    }
+
+    public boolean cancelByAgreement(Instant now) {
+        if (completedAt != null) throw new CollaborationFailure(Code.RESOLUTION_INAPPLICABLE);
+        if (cancelledAt != null) return false;
+        cancelledAt = now.truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        return true;
+    }
+
+    private void updateProgress(List<Deliverable> pieces) {
         var ids = new HashSet<UUID>();
         for (var piece : pieces) {
             var obligation = obligations.stream().filter(o -> o.id().equals(piece.obligationId())).findFirst()
@@ -89,22 +116,27 @@ public final class Collaboration {
             int pending = (int)group.stream().filter(p -> p.status() == Deliverable.Status.PENDING_VALIDATION).count();
             int rejected = group.size() - approved - pending;
             var correction = group.stream().filter(p -> p.status() == Deliverable.Status.REJECTED)
-                    .map(p -> p.review().correctionDeadline()).filter(Objects::nonNull).min(Comparator.naturalOrder()).orElse(null);
+                    .map(Deliverable::effectiveCorrectionDeadline).filter(Objects::nonNull).min(Comparator.naturalOrder()).orElse(null);
             var lastCorrection = group.stream().filter(p -> p.status() == Deliverable.Status.REJECTED)
-                    .map(p -> p.review().correctionDeadline()).filter(Objects::nonNull).max(Comparator.naturalOrder()).orElse(null);
+                    .map(Deliverable::effectiveCorrectionDeadline).filter(Objects::nonNull).max(Comparator.naturalOrder()).orElse(null);
             return new Obligation(o.id(), o.specificationId(), o.contentType(), o.description(), o.quantity(), approved,
                     o.deadline(), group.size(), pending, rejected, correction, lastCorrection);
         }).toList();
-        if (obligations.stream().noneMatch(Obligation::outstanding)) {
-            status = Status.COMPLETED; completedAt = now.truncatedTo(java.time.temporal.ChronoUnit.MICROS); return;
-        }
-        var next = nextDeadline();
-        if (next != null && !now.isBefore(next)) {
-            status = Status.EXPIRED;
-            if (expiredAt == null) expiredAt = now;
+    }
+
+    private void deriveStatus(Instant now) {
+        if (cancelledAt != null) status = Status.CANCELLED;
+        else if (obligations.stream().noneMatch(Obligation::outstanding)) {
+            status = Status.COMPLETED;
+            if (completedAt == null) completedAt = now.truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         } else {
-            status = obligations.stream().anyMatch(o -> o.pendingQuantity() > 0) ? Status.UNDER_REVIEW : Status.ACTIVE;
+            var next = nextDeadline();
+            if (next != null && !now.isBefore(next)) {
+                status = Status.EXPIRED;
+                if (expiredAt == null) expiredAt = now;
+            } else status = obligations.stream().anyMatch(o -> o.pendingQuantity() > 0) ? Status.UNDER_REVIEW : Status.ACTIVE;
         }
+        if (openIncidentCount > 0) status = Status.DISPUTED;
     }
 
     public Instant nextDeadline() {
@@ -130,6 +162,8 @@ public final class Collaboration {
     public List<Obligation> obligations() { return obligations; }
     public Instant expiredAt() { return expiredAt; }
     public Instant completedAt() { return completedAt; }
+    public Instant cancelledAt() { return cancelledAt; }
+    public int openIncidentCount() { return openIncidentCount; }
     public long version() { return version; }
     public void restoreVersion(long value) {
         if (value < 0) throw new IllegalArgumentException("Invalid version");

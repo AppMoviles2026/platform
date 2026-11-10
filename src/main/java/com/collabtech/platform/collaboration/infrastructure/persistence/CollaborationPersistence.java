@@ -42,7 +42,7 @@ public class CollaborationPersistence implements Reads {
         if(row==null){row=new CollaborationJpaEntity();row.id=c.id().toString();row.agreementId=c.agreementId().toString();row.brandId=c.snapshot().brandId().toString();
             row.creatorId=c.snapshot().creatorId().toString();row.snapshot=json.writeValueAsString(c.snapshot());row.startedAt=c.startedAt();
         }else if(row.version!=c.version())throw new CollaborationFailure(Code.CONCURRENT_UPDATE);
-        row.obligations=json.writeValueAsString(c.obligations());row.status=c.status().name();row.deadline=c.nextDeadline();row.expiredAt=c.expiredAt();row.completedAt=c.completedAt();if(create)em.persist(row);em.flush();c.restoreVersion(row.version);return c;
+        row.obligations=json.writeValueAsString(c.obligations());row.status=c.status().name();row.deadline=c.nextDeadline();row.expiredAt=c.expiredAt();row.completedAt=c.completedAt();row.cancelledAt=c.cancelledAt();row.openIncidentCount=c.openIncidentCount();if(create)em.persist(row);em.flush();c.restoreVersion(row.version);return c;
     }
     public PageResult<Agreement> agreements(Actor actor,Agreement.Status status,PageRequest page,Instant now){
         String where="a."+field(actor)+"=:owner";boolean temporal=false;
@@ -70,7 +70,7 @@ public class CollaborationPersistence implements Reads {
             .setParameter("now",now).setMaxResults(limit).getResultList().stream().map(UUID::fromString).toList();}
     private Agreement agreement(AgreementJpaEntity r){return new Agreement(UUID.fromString(r.id),json.readValue(r.snapshot,AgreementSnapshot.class),Agreement.Status.valueOf(r.status),r.brandAt,uuid(r.brandBy),r.creatorAt,uuid(r.creatorBy),r.decidedAt,uuid(r.rejectedBy),r.version);}
     private Collaboration collaboration(CollaborationJpaEntity r){return new Collaboration(UUID.fromString(r.id),UUID.fromString(r.agreementId),json.readValue(r.snapshot,AgreementSnapshot.class),r.startedAt,Collaboration.Status.valueOf(r.status),
-            readObligations(r.obligations),r.expiredAt,r.completedAt,r.version);}
+            readObligations(r.obligations),r.expiredAt,r.completedAt,r.cancelledAt,r.openIncidentCount,r.version);}
     private List<Collaboration.Obligation> readObligations(String payload) {
         var tree=json.readTree(payload);
         for(var node:tree) {

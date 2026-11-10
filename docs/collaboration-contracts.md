@@ -1,6 +1,6 @@
 # Collaboration: bloque 03
 
-US-21 y US-22; escenarios 1 y 2 de TS-04. Se mantienen las cuatro capas DDD y la autorización JWT por participante. Las entregas/revisiones ya se implementan y documentan en el [bloque 04](delivery-contracts.md); las incidencias/historial permanecen en el 05.
+US-21 y US-22; escenarios 1 y 2 de TS-04. Se mantienen las cuatro capas DDD y la autorización JWT por participante. Las entregas/revisiones ya se implementan y documentan en el [bloque 04](delivery-contracts.md); las incidencias/historial se documentan en el [bloque 05](incident-history-contracts.md).
 
 ## Acuerdo bilateral
 
@@ -50,9 +50,9 @@ Ejemplo de recorrido desde Android/Swagger:
 
 Las colaboraciones nacen en `ACTIVE`. Si vence una entrega o corrección pendiente del creador, las consultas muestran `EXPIRED` inmediatamente y el proceso periódico persiste ese estado. La fecha próxima corresponde a la acción de entrega o corrección pendiente más temprana; una entrega presentada en plazo no vence por seguir esperando revisión de la empresa. El vencimiento conserva las obligaciones para admitir entregas tardías mediante el bloque 04. `expiredAt` puede seguir nulo hasta que el proceso periódico registre la transición.
 
-El bloque 04 deriva `UNDER_REVIEW` y `COMPLETED` a partir de entregas y aprobaciones reales. `CANCELLED` y `DISPUTED` quedan preparados para los bloques siguientes; no se ofrecen comandos para forzar esos estados. No existe un PATCH genérico de estado ni cierre automático que ignore obligaciones.
+El bloque 04 deriva `UNDER_REVIEW` y `COMPLETED` a partir de entregas y aprobaciones reales. `DISPUTED` se deriva de las incidencias abiertas del bloque 05; `CANCELLED` exige una resolución aceptada por ambas partes. Ninguna de estas transiciones se fuerza con un PATCH genérico. No existe un PATCH genérico de estado ni cierre automático que ignore obligaciones.
 
-`pendingActions` describe tareas del negocio; `availableActions` identifica los comandos disponibles. Desde el bloque 04 incluye entrega, corrección, subida de archivos y revisión según rol, avance y plazo. El detalle actualizado y los estados de espera se documentan en [delivery-contracts.md](delivery-contracts.md).
+`pendingActions` describe tareas del negocio; `availableActions` identifica los comandos disponibles. Desde el bloque 04 incluye entrega, corrección, subida de archivos y revisión según rol, avance y plazo. El detalle actualizado y los estados de espera se documentan en [delivery-contracts.md](delivery-contracts.md) y [incident-history-contracts.md](incident-history-contracts.md).
 
 ## Errores y concurrencia
 

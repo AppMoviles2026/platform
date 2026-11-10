@@ -1,4 +1,4 @@
 /**
- * Collaboration Management: bilateral agreements and collaboration lifecycle (US-21/22). Deliveries, reviews and incidents extend this context in later blocks.
+ * Collaboration Management: bilateral agreements, deliveries, reviews, incident resolution and participant history (US-21 to US-25 and US-30).
  */
 package com.collabtech.platform.collaboration;
