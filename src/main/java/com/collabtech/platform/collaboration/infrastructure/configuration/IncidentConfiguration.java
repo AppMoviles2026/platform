@@ -26,8 +26,12 @@ public class IncidentConfiguration {
         return new IncidentService(participants,work,collaborations,deliveries,incidents,incidents,incidents,events,data,data,files,policy,clock);
     }
     @Bean @ConditionalOnMissingBean(RelatedReferences.class)
-    RelatedReferences unavailableHistoryReferences() {
-        return id->new References(new Reference(id,"NOT_AVAILABLE",null),new Reference(id,"NOT_AVAILABLE",null));
+    RelatedReferences historyRelatedReferences(org.springframework.beans.factory.ObjectProvider<com.collabtech.platform.performance.interfaces.acl.PerformanceReportFacade> performance) {
+        return id->{
+            var facade=performance.getIfAvailable();
+            var reference=facade==null?java.util.Optional.<com.collabtech.platform.performance.interfaces.acl.PerformanceReportFacade.Reference>empty():facade.find(id);
+            return new References(new Reference(id,"NOT_AVAILABLE",null),new Reference(id,reference.isPresent()?"AVAILABLE":"NOT_AVAILABLE",reference.map(r->r.reportId().toString()).orElse(null)));
+        };
     }
     @Bean CollaborationHistoryService collaborationHistoryService(CollaborationService service,UnitOfWork work,
                                                                    HistoryPersistence history,RelatedReferences references) {

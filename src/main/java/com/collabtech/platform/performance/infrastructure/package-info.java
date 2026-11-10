@@ -1,4 +1,2 @@
-/**
- * Reserved for persistence/external adapters and composition. No fake repositories or provider integrations.
- */
+/** Own persistence and social metrics adapters, using published context facades for integration. */
 package com.collabtech.platform.performance.infrastructure;

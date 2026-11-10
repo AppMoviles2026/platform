@@ -6,7 +6,7 @@ La numeración identifica bloques de trabajo; los commits de control de versione
 
 ## Estado actual — 9 de noviembre de 2026
 
-**Cinco bloques implementados y cinco pendientes. El siguiente es el bloque 06.** «Implementado» describe el código y sus verificaciones, no confirma que el usuario haya creado el commit manual ni desplegado los cambios.
+**Seis bloques implementados (01–05 y 09) y cuatro pendientes (06–08 y 10). Billing permanece pendiente por decisión del usuario; el siguiente bloque funcional es 10.** «Implementado» describe el código y sus verificaciones, no confirma que el usuario haya creado el commit manual ni desplegado los cambios.
 
 | Bloque | Estado | Contexto | US y soporte | Entrega |
 | --- | --- | --- | --- | --- |
@@ -18,7 +18,7 @@ La numeración identifica bloques de trabajo; los commits de control de versione
 | 06 | Pendiente | Billing | US-26; TS-06; SS-01 | Validación Sandbox del proveedor, vinculación financiera y base de webhooks. |
 | 07 | Pendiente | Billing | US-27; TS-06 | Planes y suscripciones confirmadas por el proveedor. |
 | 08 | Pendiente | Billing | US-28; TS-05/06 | Compensaciones, bloqueos, transacciones y pagos sin duplicación. |
-| 09 | Pendiente | Performance | US-29, escenarios 1–3; TS-07; SS-03 | Métricas con fuente/periodo y evidencias manuales diferenciadas. |
+| 09 | Implementado | Performance | US-29, escenarios 1–3; TS-07; SS-03 | Métricas con fuente/periodo y evidencias manuales diferenciadas. |
 | 10 | Pendiente | Performance e integración | US-29, escenarios 4–5; TS-07; SS-03 | Atribución, estimaciones y validación de recorridos completos. |
 
 US-01 a US-08 corresponden a la landing y quedan fuera de estos bloques. El consumo de los contratos nuevos desde Android se implementará posteriormente.
@@ -31,19 +31,20 @@ US-01 a US-08 corresponden a la landing y quedan fuera de estos bloques. El cons
 - **Bloque 03:** acuerdos bilaterales desde selecciones, condiciones inmutables, firma/rechazo explícitos por participante, activación idempotente, obligaciones con cantidades y fechas, estado/vencimientos, outbox con recibos y reintentos, migración V10 y demo bilateral. Detalles en [collaboration-contracts.md](collaboration-contracts.md).
 - **Bloque 04:** entregas por pieza y cantidad, enlaces y archivos privados persistidos en MySQL, revisiones de versiones exactas, rechazo con observaciones/plazo, correcciones e historial de versiones; progreso, finalización y eventos transaccionales, idempotencia, migración V11 y demo con corrección. Detalles en [delivery-contracts.md](delivery-contracts.md).
 - **Bloque 05:** incidencias con bloqueos independientes, propuestas y confirmación de contraparte, ampliación/cancelación consensuadas, historial privado y recuperación de hechos anteriores, ACL de ejecución, migración V12 y seed de resolución. Detalles en [incident-history-contracts.md](incident-history-contracts.md).
+- **Bloque 09:** reporte de resultados por colaboración, capturas autorizadas de TikTok con fuente/periodo, ausencia y fallos explícitos, evidencia manual y revisión empresarial separadas, archivos privados, reintentos/concurrencia, referencias desde el historial, migración V13 y seed manual demostrativo. Contratos en [performance-contracts.md](performance-contracts.md); límites externos en [ss03-metrics-feasibility.md](ss03-metrics-feasibility.md).
 
-La regresión completa registrada tras el bloque 05 reúne **273 casos aprobados**, sin fallos, errores ni omisiones, con MySQL 8.4 y Mailpit aislados. Las pruebas específicas de actualización utilizan H2 dedicado. Incluye incidencias y propuestas simultáneas, bloqueos independientes, plazo de siete días, ampliaciones/cancelación, auditoría y archivos privados, reconstrucción concurrente, contratos DDD, V11→V12, seed y Swagger, además de las regresiones anteriores. Se repitió la comprobación de privacidad con MySQL; la regresión completa H2 terminó sin fallos: 272 aprobadas y una prueba de correo omitida por requerir Mailpit.
+La verificación actual del bloque 09 reúne **300 casos aprobados**, sin fallos, errores ni omisiones, con MySQL 8.4 y Mailpit aislados: regresión completa seguida de la comprobación final de Performance, seed y límites DDD. Las pruebas de actualización de esquemas utilizan H2 dedicado. Incluye todos los bloques previos y métricas con fuente/periodo, renovación de credenciales, ausencia y fallos del proveedor, reintentos/concurrencia, revisión manual, privacidad de archivos, versiones históricas, rollback, capturas con timestamps iguales, V12→V13, seed y Swagger. La regresión completa final H2 terminó con **299 aprobadas y una prueba de correo omitida** por requerir Mailpit. Estos resultados no acreditan validación con cuentas externas ni despliegue en Azure.
 
 ### Límites y verificaciones que siguen pendientes
 
-- Las redes sociales se probaron con respuestas HTTP controladas. Configurar y verificar consentimiento/renovación con cuentas externas reales sigue pendiente; SS-02 no debe presentarse como validación real concluida.
+- Las redes sociales y las métricas se probaron con respuestas HTTP controladas. SS-03 mantiene pendiente la validación externa; TikTok requiere video.list e Instagram aún no tiene adaptador de estadísticas. Configurar y verificar consentimiento/renovación con cuentas externas reales sigue pendiente; SS-02 no debe presentarse como validación real concluida.
 - Android todavía debe consumir las rutas nuevas. Las condiciones y mutaciones heredadas que aceptan versión opcional conservan compatibilidad; los clientes deben enviar versión para detectar una pantalla desactualizada. Las rutas nuevas que la requieren están documentadas.
-- Seleccionar una postulación sigue sin crear una colaboración ni una aceptación bilateral. El bloque 03 exige las dos firmas y cubre US-21/22. El bloque 04 cubre entregas/revisiones y sus versiones; el bloque 05 completa incidencias/historial global con resolución bilateral. Billing y Performance conservan su estructura base para 06–10.
+- Seleccionar una postulación sigue sin crear una colaboración ni una aceptación bilateral. El bloque 03 exige las dos firmas y cubre US-21/22. El bloque 04 cubre entregas/revisiones y sus versiones; el bloque 05 completa incidencias/historial global con resolución bilateral. Billing conserva su estructura base para 06–08. Performance implementa métricas/evidencia en 09; atribución y estimaciones siguen en 10.
 - Los resultados locales no acreditan que estos cambios estén desplegados en Azure. Ese despliegue y su verificación son independientes del estado de implementación.
 
 ## Bloque 01: alcance de implementación
 
-Estado del código: implementado y verificado el 8 de noviembre de 2026. Los bloques 02–05 también están implementados; los bloques 06–10 continúan pendientes. La verificación contra cuentas reales de redes sociales requiere configurar las aplicaciones externas; se detalla separadamente en los contratos de Identity.
+Estado del código: implementado y verificado el 8 de noviembre de 2026. Los bloques 02–05 y 09 también están implementados; 06–08 y 10 continúan pendientes. La verificación contra cuentas reales de redes sociales requiere configurar las aplicaciones externas; se detalla separadamente en los contratos de Identity.
 
 Mensaje sugerido para el commit manual: `feat(identity): complete brand profiles and authorized social access`.
 
@@ -54,7 +55,7 @@ Mensaje sugerido para el commit manual: `feat(identity): complete brand profiles
 - Alinear Java entre Maven y Docker, añadir migración nueva y preparar ejecución MySQL/Mailpit aislada.
 - Documentar endpoints, errores, integración y verificaciones externas pendientes en [identity-contracts.md](identity-contracts.md).
 
-## Bloques 02–05 implementados y commits sugeridos para lo pendiente
+## Bloques 02–10: alcance, estado y commits sugeridos
 
 ### 02. Campaign
 
@@ -98,7 +99,7 @@ US-30 implementa historial propio paginado, detalle de acuerdo y recursos, crono
 
 ### 06. Billing: vinculación financiera
 
-Estado: **pendiente; siguiente bloque a implementar**.
+Estado: **pendiente por decisión del usuario**. Se pospone junto con 07 y 08 hasta definir un proveedor viable para Perú y disponer de su cuenta/entorno de pruebas. No se implementó código de Billing.
 
 Commit manual sugerido: `feat(billing): implement verified payment method linking`.
 
@@ -106,7 +107,7 @@ Depende de 01 y usa 03–05 para el flujo de compensación de SS-01. Validar el 
 
 ### 07. Billing: suscripción
 
-Estado: **pendiente**.
+Estado: **pendiente por decisión del usuario; depende de 06**.
 
 Commit manual sugerido: `feat(billing): implement company subscriptions`.
 
@@ -114,7 +115,7 @@ Depende de 06. US-27 obtiene planes/precios/monedas desde el servidor. Medio vá
 
 ### 08. Billing: compensación
 
-Estado: **pendiente**.
+Estado: **pendiente por decisión del usuario; depende de 06 y 07**.
 
 Commit manual sugerido: `feat(billing): implement compensation lifecycle and payments`.
 
@@ -122,11 +123,13 @@ Depende de 03–07. US-28 crea la compensación desde el acuerdo, la mantiene pe
 
 ### 09. Performance: métricas y evidencia
 
-Estado: **pendiente**.
+Estado: **implementado y verificado el 9 de noviembre de 2026**. No depende de Billing. Contratos en [performance-contracts.md](performance-contracts.md).
 
 Commit manual sugerido: `feat(performance): implement sourced metrics and manual evidence`.
 
-Depende de 01, 04 y 05. US-29 escenarios 1–3: métricas disponibles con fuente/periodo, ausencia explícita sin inventar ceros y evidencia manual diferenciada. SS-03 verifica capacidades y restricciones reales; el permiso de perfil básico no garantiza estadísticas. Probar permisos, vencimientos, caída del proveedor, snapshots repetidos y evidencia ajena/inválida.
+Depende de 01, 04 y 05. US-29 escenarios 1–3 y las consultas/registro de TS-07: métricas con fuente/periodo, ausencia explícita y evidencia manual diferenciada. Incluye adaptador TikTok con video.list, comprobación del video autorizado, renovación mediante Identity, capturas históricas sin sumar acumulados, estados de permisos/errores, versiones vigentes, revisión manual con expectedVersion, archivos privados y requestId idempotente. V13 no cambia migraciones ni datos anteriores; el seed solo añade evidencia marcada como demostración.
+
+La referencia del historial identifica el reporte mediante un ACL. Las pruebas incluyen MySQL, permisos, renovación, caída del proveedor, concurrencia, marcas de tiempo iguales, rollback, archivos y evidencia ajena/inválida. Instagram mantiene evidencia manual y UNSUPPORTED_PROVIDER para la consulta automática. La validación externa de SS-03 sigue pendiente: disponer de código y HTTP controlado no demuestra consentimiento ni mediciones con cuentas reales. Ver [ss03-metrics-feasibility.md](ss03-metrics-feasibility.md). Android consumirá los contratos posteriormente.
 
 ### 10. Performance: atribución e integración
 
@@ -134,11 +137,11 @@ Estado: **pendiente**.
 
 Commit manual sugerido: `feat(performance): implement attribution and verify backend journeys`.
 
-Depende de 01–09. US-29 escenarios 4–5: enlaces/códigos de colaboración, interacciones atribuibles sin duplicados y resultados con límites/advertencia de estimación. Impedir destinos arbitrarios y no equiparar clics a ventas verificadas. Ejecutar recorridos completos con MySQL y ambos roles, actualizaciones de esquema sin borrar datos, seed idempotente y revisión final de contratos móviles y OpenAPI.
+Depende de 01–05 y 09 para atribución y recorridos no financieros. La integración con pagos/suscripciones espera a 06–08, que siguen pendientes y no bloquean el trabajo propio de Performance. US-29 escenarios 4–5: enlaces/códigos de colaboración, interacciones atribuibles sin duplicados y resultados con límites/advertencia de estimación. Impedir destinos arbitrarios y no equiparar clics a ventas verificadas. Ejecutar recorridos completos con MySQL y ambos roles, actualizaciones de esquema sin borrar datos, seed idempotente y revisión final de contratos móviles y OpenAPI.
 
 ## Reglas de cierre por bloque
 
-Mantener los diez bloques originales: cinco implementados y cinco restantes. Cada bloque pendiente es una entrega funcional con su mensaje de commit sugerido; no se añaden commits separados para capas, pruebas o documentación. Los commits los crea manualmente el usuario cuando revise la entrega.
+Mantener los diez bloques originales: seis implementados y cuatro restantes. Cada bloque pendiente es una entrega funcional con su mensaje de commit sugerido; no se añaden commits separados para capas, pruebas o documentación. Los commits los crea manualmente el usuario cuando revise la entrega.
 
 Cada bloque incluye dominio, aplicación, infraestructura, REST, migración nueva, pruebas de sus escenarios y documentación. Mantener las cuatro capas, JWT y autorización por objeto, errores `ApiError`, fechas del servidor y control de reintentos/concurrencia. Las pruebas finales complementan las de cada bloque, no las sustituyen. Mantener separadas las pruebas controladas y las verificaciones externas reales.
 

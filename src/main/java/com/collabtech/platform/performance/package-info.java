@@ -1,4 +1,2 @@
-/**
- * Performance & Attribution Management: future PerformanceReport, snapshots, sources and attribution. Outside backlog positions 1-18.
- */
+/** Performance reports, sourced metric snapshots and clearly separated manual evidence. Attribution follows in block 10. */
 package com.collabtech.platform.performance;

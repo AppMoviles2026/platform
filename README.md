@@ -21,7 +21,7 @@ MySQL guarda sus datos en un volumen. No uses `docker compose down -v` salvo que
 
 ## Cuentas de demostración
 
-Compose carga automáticamente datos de ejemplo: 1 marca, 2 creadores, 4 campañas publicadas, 1 borrador y 5 postulaciones (3 pendientes y 2 evaluadas). También crea un acuerdo aceptado entre la marca y `demo.creator2@collabpro.app`, con una entrega corregida pendiente de revisión, su rechazo histórico y una incidencia demo resuelta por ambas partes. El seed es idempotente: no duplica ni sobrescribe datos existentes.
+Compose carga automáticamente datos de ejemplo: 1 marca, 2 creadores, 4 campañas publicadas, 1 borrador y 5 postulaciones (3 pendientes y 2 evaluadas). También crea un acuerdo aceptado entre la marca y `demo.creator2@collabpro.app`, con una entrega corregida pendiente de revisión, su rechazo histórico y una incidencia demo resuelta por ambas partes y una evidencia manual de estadísticas marcada como demostración (sin métricas automáticas ficticias). El seed es idempotente: no duplica ni sobrescribe datos existentes.
 
 | Rol | Correo |
 |---|---|
@@ -50,11 +50,14 @@ En Swagger, ejecuta `POST /api/v1/auth/sessions` con una cuenta demo, copia `acc
 | Archivos privados | `POST /collaborations/{id}/assets`; `GET /collaboration-assets/{id}` y `/collaboration-assets/{id}/content` con JWT |
 | Incidencias | `GET, POST /collaborations/{id}/incidents`; detalle, propuestas y decisiones bajo `/incidents/{id}`; evidencia con `/collaborations/{id}/incident-assets` |
 | Historial | `GET /collaborations/history`, `/collaborations/history/{id}`, `/collaborations/{id}/history` |
+| Performance | `GET /collaborations/{id}/metrics`; actualización y capturas; `GET, POST /collaborations/{id}/evidence`; revisión bajo `/performance-evidence/{id}` y archivos privados de evidencia |
 | Redes sociales | `POST /social-accounts/{platform}/authorizations`; `GET /social-accounts/{platform}/callback`, `/social-accounts/authorizations/{authorizationId}`, `/social-accounts/me`, `/social-accounts/{socialId}/access` |
 
-Evaluación empresarial: `GET /campaigns/{id}/applications`, detalle y `POST /campaigns/{id}/applications/{applicationId}/decision`. [Contratos y compatibilidad del bloque 02](docs/campaign-contracts.md). [Acuerdos bilaterales y estado: bloque 03](docs/collaboration-contracts.md). [Entregas, archivos y revisión: bloque 04](docs/delivery-contracts.md). [Incidencias e historial: bloque 05](docs/incident-history-contracts.md).
+Evaluación empresarial: `GET /campaigns/{id}/applications`, detalle y `POST /campaigns/{id}/applications/{applicationId}/decision`. [Contratos y compatibilidad del bloque 02](docs/campaign-contracts.md). [Acuerdos bilaterales y estado: bloque 03](docs/collaboration-contracts.md). [Entregas, archivos y revisión: bloque 04](docs/delivery-contracts.md). [Incidencias e historial: bloque 05](docs/incident-history-contracts.md). [Métricas y evidencia: bloque 09](docs/performance-contracts.md).
 
 Para creación y detalle de contratos, consulta los controladores REST en `src/main/java/com/collabtech/platform`. Las migraciones de esquema están en `src/main/resources/db/migration`.
+
+Métricas automáticas: TikTok requiere `video.list` y nuevo consentimiento si solo estaba autorizado el perfil básico. Instagram admite evidencia manual; su adaptador de estadísticas sigue pendiente. [Capacidades y validación externa pendiente](docs/ss03-metrics-feasibility.md).
 
 ## Despliegue
 

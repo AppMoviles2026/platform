@@ -1,4 +1,2 @@
-/**
- * Reserved for REST resources, DTO mapping and published context facades. No endpoints registered by this scaffold.
- */
+/** JWT-protected REST resources and published report references for other bounded contexts. */
 package com.collabtech.platform.performance.interfaces;

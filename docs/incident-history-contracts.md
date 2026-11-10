@@ -119,7 +119,7 @@ Después de los siete días se permite aportar evidencia a incidencias que sigue
 
 El detalle histórico conserva el snapshot del acuerdo, firmas, fechas y avance. Proporciona rutas existentes para entregas/versiones, incidencias y cronología. Los nombres actuales del perfil o campaña no sustituyen los históricos.
 
-Las referencias de compensación y resultados usan el identificador de colaboración y muestran `NOT_AVAILABLE` con `resourceId: null` mientras Billing/Performance no las suministren. No se exponen rutas inexistentes, pagos ficticios ni ceros como métricas supuestas.
+Las referencias usan el identificador de colaboración. Compensación mantiene `NOT_AVAILABLE` con `resourceId: null` mientras Billing no la suministre. Desde el bloque 09, Performance publica `AVAILABLE` y el UUID de su reporte cuando existe; esto no garantiza que haya métricas automáticas y puede incluir únicamente evidencia manual. La consulta `/api/v1/collaborations/{id}/metrics` detalla esa disponibilidad. No se exponen pagos ficticios ni ceros como métricas supuestas.
 
 La cronología registra firmas recuperables, activación, subidas, entregas/revisiones, vencimientos, finalización e incidencias/resoluciones. Cada entrada incluye secuencia, tipo, actor cuando se conoce, fecha, origen y detalles relevantes. Los reintentos y las lecturas no duplican hechos.
 

@@ -166,6 +166,30 @@ class SocialCredentialLifecycleTests {
         assertEquals("old-access",cipher.decrypt(jdbc.queryForObject("select encrypted_access_token from identity_provider_credentials where social_id=?",String.class,f.social().toString())));
         server.verify();
     }
+
+    @Test void performanceAdapterRenewsExpiredCredentialsAndUsesOnlyTheNewToken() {
+        var f=fixture("tiktok",true,true);expectRefresh("renewed-performance-token","renewed-refresh",f.external());
+        var builder=RestClient.builder();var metricsHttp=MockRestServiceServer.bindTo(builder).build();
+        metricsHttp.expect(requestTo(com.collabtech.platform.performance.infrastructure.providers.AuthorizedSocialMetricsProvider.QUERY))
+                .andExpect(header("Authorization","Bearer renewed-performance-token"))
+                .andRespond(withSuccess("{\"error\":{\"code\":\"ok\"},\"data\":{\"videos\":[{\"id\":\"123\",\"create_time\":1,\"view_count\":25}]}}",MediaType.APPLICATION_JSON));
+        var metrics=new com.collabtech.platform.performance.infrastructure.providers.AuthorizedSocialMetricsProvider(facade,builder.build(),clock);
+        var result=metrics.fetch(f.owner(),f.social(),"tiktok","123");
+        assertEquals(com.collabtech.platform.performance.domain.model.PerformanceModels.FetchStatus.AVAILABLE,result.status());
+        assertEquals(25L,result.metrics().get(com.collabtech.platform.performance.domain.model.PerformanceModels.MetricType.VIEWS));
+        assertFalse(result.toString().contains("renewed-performance-token"));server.verify();metricsHttp.verify();
+    }
+    @Test void performanceAdapterDoesNotQueryVideosWithoutScopeOrRenewableConsent() {
+        var f=fixture("tiktok",false,false);
+        var builder=RestClient.builder();var metricsHttp=MockRestServiceServer.bindTo(builder).build();
+        var metrics=new com.collabtech.platform.performance.infrastructure.providers.AuthorizedSocialMetricsProvider(facade,builder.build(),clock);
+        jdbc.update("update identity_provider_credentials set scopes='user.info.basic' where social_id=?",f.social().toString());
+        assertEquals(com.collabtech.platform.performance.domain.model.PerformanceModels.FetchStatus.INSUFFICIENT_SCOPE,metrics.fetch(f.owner(),f.social(),"tiktok","123").status());
+        jdbc.update("update identity_provider_credentials set scopes='video.list',expires_at=? where social_id=?",Timestamp.from(now.minusSeconds(1)),f.social().toString());
+        assertEquals(com.collabtech.platform.performance.domain.model.PerformanceModels.FetchStatus.AUTHORIZATION_REQUIRED,metrics.fetch(f.owner(),f.social(),"tiktok","123").status());
+        server.verify();metricsHttp.verify();
+    }
+
     private com.collabtech.platform.identity.application.projections.IdentityViews.SocialAccessView inspect(Fixture f,Set<String> scopes) {
         return access.inspect(new CreatorProfileId(f.owner()),new SocialMediaAccountId(f.social()),scopes);
     }
