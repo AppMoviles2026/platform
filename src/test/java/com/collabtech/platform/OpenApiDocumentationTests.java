@@ -86,6 +86,18 @@ class OpenApiDocumentationTests {
                 .andExpect(jsonPath("$.paths['/api/v1/performance-assets/{id}/content'].get.responses['200'].content['application/pdf'].schema.format").value("binary"))
                 .andExpect(jsonPath("$.components.schemas.EvidenceBody.required",org.hamcrest.Matchers.hasItems("observedAt","period","references")))
                 .andExpect(jsonPath("$.components.schemas.RefreshBody.required",org.hamcrest.Matchers.hasItems("requestId","socialId","submissionId","postId")));
+        mvc.perform(get("/v3/api-docs"))
+                .andExpect(jsonPath("$.paths['/api/v1/collaborations/{id}/attribution'].post.responses['201']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/collaborations/{id}/attribution'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/attribution/destinations'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/attribution/{id}/status'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/attribution/{id}/interactions'].post.responses['201']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/attribution/{id}/interactions'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/public/attribution/{token}'].get.responses['302']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/public/attribution/{token}'].get.security").isEmpty())
+                .andExpect(jsonPath("$.components.schemas.AttributionCreateBody.required",org.hamcrest.Matchers.hasItems("requestId","kind","label")))
+                .andExpect(jsonPath("$.components.schemas.AttributionInteractionBody.required",org.hamcrest.Matchers.hasItems("eventId","evidenceId","occurredAt")))
+                .andExpect(jsonPath("$.components.schemas.AttributionStatusBody.required",org.hamcrest.Matchers.hasItem("expectedVersion")));
         mvc.perform(get("/api/v1/accounts/me")).andExpect(status().isUnauthorized());
     }
 }

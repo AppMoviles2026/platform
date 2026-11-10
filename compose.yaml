@@ -47,6 +47,8 @@ services:
       TIKTOK_CLIENT_SECRET: ${TIKTOK_CLIENT_SECRET:-}
       TIKTOK_REDIRECT_URI: ${TIKTOK_REDIRECT_URI:-}
       TIKTOK_SCOPES: ${TIKTOK_SCOPES:-user.info.basic}
+      PERFORMANCE_ATTRIBUTION_DESTINATIONS: "${PERFORMANCE_ATTRIBUTION_DESTINATIONS:-demo=https://example.com/collabpro-demo}"
+      PERFORMANCE_ATTRIBUTION_PUBLIC_BASE_URL: "${PERFORMANCE_ATTRIBUTION_PUBLIC_BASE_URL:-http://localhost:8081}"
     depends_on:
       mysql:
         condition: service_healthy

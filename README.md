@@ -21,7 +21,7 @@ MySQL guarda sus datos en un volumen. No uses `docker compose down -v` salvo que
 
 ## Cuentas de demostración
 
-Compose carga automáticamente datos de ejemplo: 1 marca, 2 creadores, 4 campañas publicadas, 1 borrador y 5 postulaciones (3 pendientes y 2 evaluadas). También crea un acuerdo aceptado entre la marca y `demo.creator2@collabpro.app`, con una entrega corregida pendiente de revisión, su rechazo histórico y una incidencia demo resuelta por ambas partes y una evidencia manual de estadísticas marcada como demostración (sin métricas automáticas ficticias). El seed es idempotente: no duplica ni sobrescribe datos existentes.
+Compose carga automáticamente datos de ejemplo: 1 marca, 2 creadores, 4 campañas publicadas, 1 borrador y 5 postulaciones (3 pendientes y 2 evaluadas). También crea un acuerdo aceptado entre la marca y `demo.creator2@collabpro.app`, con una entrega corregida pendiente de revisión, su rechazo histórico y una incidencia demo resuelta por ambas partes y una evidencia manual de estadísticas marcada como demostración (sin métricas automáticas ficticias). El seed añade también código/enlace demostrativos de atribución y un uso de código separado de los totales reales. El seed es idempotente: no duplica ni sobrescribe datos existentes.
 
 | Rol | Correo |
 |---|---|
@@ -51,9 +51,10 @@ En Swagger, ejecuta `POST /api/v1/auth/sessions` con una cuenta demo, copia `acc
 | Incidencias | `GET, POST /collaborations/{id}/incidents`; detalle, propuestas y decisiones bajo `/incidents/{id}`; evidencia con `/collaborations/{id}/incident-assets` |
 | Historial | `GET /collaborations/history`, `/collaborations/history/{id}`, `/collaborations/{id}/history` |
 | Performance | `GET /collaborations/{id}/metrics`; actualización y capturas; `GET, POST /collaborations/{id}/evidence`; revisión bajo `/performance-evidence/{id}` y archivos privados de evidencia |
+| Atribución | `GET, POST /collaborations/{id}/attribution`; destinos, estados y declaraciones bajo `/attribution`; enlace público solo GET/HEAD bajo `/public/attribution/{token}` |
 | Redes sociales | `POST /social-accounts/{platform}/authorizations`; `GET /social-accounts/{platform}/callback`, `/social-accounts/authorizations/{authorizationId}`, `/social-accounts/me`, `/social-accounts/{socialId}/access` |
 
-Evaluación empresarial: `GET /campaigns/{id}/applications`, detalle y `POST /campaigns/{id}/applications/{applicationId}/decision`. [Contratos y compatibilidad del bloque 02](docs/campaign-contracts.md). [Acuerdos bilaterales y estado: bloque 03](docs/collaboration-contracts.md). [Entregas, archivos y revisión: bloque 04](docs/delivery-contracts.md). [Incidencias e historial: bloque 05](docs/incident-history-contracts.md). [Métricas y evidencia: bloque 09](docs/performance-contracts.md).
+Evaluación empresarial: `GET /campaigns/{id}/applications`, detalle y `POST /campaigns/{id}/applications/{applicationId}/decision`. [Contratos y compatibilidad del bloque 02](docs/campaign-contracts.md). [Acuerdos bilaterales y estado: bloque 03](docs/collaboration-contracts.md). [Entregas, archivos y revisión: bloque 04](docs/delivery-contracts.md). [Incidencias e historial: bloque 05](docs/incident-history-contracts.md). [Métricas y evidencia: bloque 09](docs/performance-contracts.md). [Atribución: bloque 10](docs/attribution-contracts.md).
 
 Para creación y detalle de contratos, consulta los controladores REST en `src/main/java/com/collabtech/platform`. Las migraciones de esquema están en `src/main/resources/db/migration`.
 
@@ -69,9 +70,11 @@ El seed se activa en Compose local y está apagado por defecto fuera de Compose.
 
 Genera claves distintas y aleatorias para JWT y cifrado; no uses valores locales ni los subas al repositorio. Configura credenciales OAuth de Instagram/TikTok solo si habilitarás esa integración (`INSTAGRAM_*`, `TIKTOK_*`).
 
+Para compartir enlaces de atribución, configura `PERFORMANCE_ATTRIBUTION_PUBLIC_BASE_URL` con el origen publicado (por ejemplo `http://40.75.23.68:8081`) y `PERFORMANCE_ATTRIBUTION_DESTINATIONS` con destinos HTTPS aprobados por ID. La configuración local incluye solo un destino de demostración. Los códigos y clics se muestran como estimaciones, sin certificar ventas ni pagos.
+
 ## Desarrollo
 
-Requiere JDK 21 o superior (Java 21 en Docker). [Plan de diez bloques](docs/implementation-plan.md) · [Contratos de Identity y límites OAuth](docs/identity-contracts.md).
+Requiere JDK 21 o superior (Java 21 en Docker). [Plan de diez bloques](docs/implementation-plan.md) · [Contratos de Identity y límites OAuth](docs/identity-contracts.md) · [Validación y contratos móviles](docs/backend-validation-and-mobile-contracts.md).
 
 ```powershell
 .\mvnw.cmd test

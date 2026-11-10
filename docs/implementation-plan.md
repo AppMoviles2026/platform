@@ -6,7 +6,7 @@ La numeración identifica bloques de trabajo; los commits de control de versione
 
 ## Estado actual — 9 de noviembre de 2026
 
-**Seis bloques implementados (01–05 y 09) y cuatro pendientes (06–08 y 10). Billing permanece pendiente por decisión del usuario; el siguiente bloque funcional es 10.** «Implementado» describe el código y sus verificaciones, no confirma que el usuario haya creado el commit manual ni desplegado los cambios.
+**Siete bloques implementados (01–05, 09 y 10) y tres pendientes (06–08). Billing permanece pendiente por decisión del usuario. La integración móvil posterior y las verificaciones externas se mantienen diferenciadas del código del backend.** «Implementado» describe el código y sus verificaciones, no confirma que el usuario haya creado el commit manual ni desplegado los cambios.
 
 | Bloque | Estado | Contexto | US y soporte | Entrega |
 | --- | --- | --- | --- | --- |
@@ -19,7 +19,7 @@ La numeración identifica bloques de trabajo; los commits de control de versione
 | 07 | Pendiente | Billing | US-27; TS-06 | Planes y suscripciones confirmadas por el proveedor. |
 | 08 | Pendiente | Billing | US-28; TS-05/06 | Compensaciones, bloqueos, transacciones y pagos sin duplicación. |
 | 09 | Implementado | Performance | US-29, escenarios 1–3; TS-07; SS-03 | Métricas con fuente/periodo y evidencias manuales diferenciadas. |
-| 10 | Pendiente | Performance e integración | US-29, escenarios 4–5; TS-07; SS-03 | Atribución, estimaciones y validación de recorridos completos. |
+| 10 | Implementado | Performance e integración | US-29, escenarios 4–5; TS-07; SS-03 | Atribución, estimaciones y validación de recorridos completos. |
 
 US-01 a US-08 corresponden a la landing y quedan fuera de estos bloques. El consumo de los contratos nuevos desde Android se implementará posteriormente.
 
@@ -32,19 +32,20 @@ US-01 a US-08 corresponden a la landing y quedan fuera de estos bloques. El cons
 - **Bloque 04:** entregas por pieza y cantidad, enlaces y archivos privados persistidos en MySQL, revisiones de versiones exactas, rechazo con observaciones/plazo, correcciones e historial de versiones; progreso, finalización y eventos transaccionales, idempotencia, migración V11 y demo con corrección. Detalles en [delivery-contracts.md](delivery-contracts.md).
 - **Bloque 05:** incidencias con bloqueos independientes, propuestas y confirmación de contraparte, ampliación/cancelación consensuadas, historial privado y recuperación de hechos anteriores, ACL de ejecución, migración V12 y seed de resolución. Detalles en [incident-history-contracts.md](incident-history-contracts.md).
 - **Bloque 09:** reporte de resultados por colaboración, capturas autorizadas de TikTok con fuente/periodo, ausencia y fallos explícitos, evidencia manual y revisión empresarial separadas, archivos privados, reintentos/concurrencia, referencias desde el historial, migración V13 y seed manual demostrativo. Contratos en [performance-contracts.md](performance-contracts.md); límites externos en [ss03-metrics-feasibility.md](ss03-metrics-feasibility.md).
+- **Bloque 10:** mecanismos LINK/CODE, destinos aprobados en servidor, seguimiento público deduplicado y declaraciones privadas con evidencia, fuentes/periodos/advertencia de estimación, estados y versiones, exclusión de evidencia rechazada, V14, demo diferenciada, recorridos completos no financieros y revisión de contratos Android/OpenAPI. Detalles en [attribution-contracts.md](attribution-contracts.md) y [backend-validation-and-mobile-contracts.md](backend-validation-and-mobile-contracts.md).
 
-La verificación actual del bloque 09 reúne **300 casos aprobados**, sin fallos, errores ni omisiones, con MySQL 8.4 y Mailpit aislados: regresión completa seguida de la comprobación final de Performance, seed y límites DDD. Las pruebas de actualización de esquemas utilizan H2 dedicado. Incluye todos los bloques previos y métricas con fuente/periodo, renovación de credenciales, ausencia y fallos del proveedor, reintentos/concurrencia, revisión manual, privacidad de archivos, versiones históricas, rollback, capturas con timestamps iguales, V12→V13, seed y Swagger. La regresión completa final H2 terminó con **299 aprobadas y una prueba de correo omitida** por requerir Mailpit. Estos resultados no acreditan validación con cuentas externas ni despliegue en Azure.
+La verificación actual del bloque 10 reúne **318 casos aprobados**, sin fallos, errores ni omisiones, con MySQL 8.4 y Mailpit aislados. Se ejecutó la regresión completa y después la comprobación final de atribución con tokens sensibles a mayúsculas/minúsculas. Las pruebas específicas de actualización utilizan bases H2 dedicadas. Incluye todos los bloques previos, enlaces/códigos, deduplicación de sesión/evento, concurrencia, periodos, fuentes, exclusión de evidencia rechazada, rollback, privacidad, V13→V14, seed y Swagger. El recorrido completo verifica registro/login de ambos roles, campaña/postulación/acuerdo, rechazo/corrección/aprobación, incidencia/resolución, métricas/evidencia, atribución e historial conservando las condiciones originales. La regresión H2 final concluyó con **317 aprobados y una prueba de correo omitida** por requerir Mailpit, sin fallos ni errores. También se validó la configuración de Compose y los enlaces internos de la documentación. No se acreditan pagos, cuentas sociales externas ni despliegue Azure.
 
 ### Límites y verificaciones que siguen pendientes
 
 - Las redes sociales y las métricas se probaron con respuestas HTTP controladas. SS-03 mantiene pendiente la validación externa; TikTok requiere video.list e Instagram aún no tiene adaptador de estadísticas. Configurar y verificar consentimiento/renovación con cuentas externas reales sigue pendiente; SS-02 no debe presentarse como validación real concluida.
 - Android todavía debe consumir las rutas nuevas. Las condiciones y mutaciones heredadas que aceptan versión opcional conservan compatibilidad; los clientes deben enviar versión para detectar una pantalla desactualizada. Las rutas nuevas que la requieren están documentadas.
-- Seleccionar una postulación sigue sin crear una colaboración ni una aceptación bilateral. El bloque 03 exige las dos firmas y cubre US-21/22. El bloque 04 cubre entregas/revisiones y sus versiones; el bloque 05 completa incidencias/historial global con resolución bilateral. Billing conserva su estructura base para 06–08. Performance implementa métricas/evidencia en 09; atribución y estimaciones siguen en 10.
+- Seleccionar una postulación sigue sin crear una colaboración ni una aceptación bilateral. El bloque 03 exige las dos firmas y cubre US-21/22. El bloque 04 cubre entregas/revisiones y sus versiones; el bloque 05 completa incidencias/historial global con resolución bilateral. Billing conserva su estructura base para 06–08. Performance implementa métricas/evidencia en 09 y atribución/interpretación en 10. Los recorridos financieros siguen pendientes junto con Billing.
 - Los resultados locales no acreditan que estos cambios estén desplegados en Azure. Ese despliegue y su verificación son independientes del estado de implementación.
 
 ## Bloque 01: alcance de implementación
 
-Estado del código: implementado y verificado el 8 de noviembre de 2026. Los bloques 02–05 y 09 también están implementados; 06–08 y 10 continúan pendientes. La verificación contra cuentas reales de redes sociales requiere configurar las aplicaciones externas; se detalla separadamente en los contratos de Identity.
+Estado del código: implementado y verificado el 8 de noviembre de 2026. Los bloques 02–05, 09 y 10 también están implementados; 06–08 continúan pendientes. La verificación contra cuentas reales de redes sociales requiere configurar las aplicaciones externas; se detalla separadamente en los contratos de Identity.
 
 Mensaje sugerido para el commit manual: `feat(identity): complete brand profiles and authorized social access`.
 
@@ -133,16 +134,18 @@ La referencia del historial identifica el reporte mediante un ACL. Las pruebas i
 
 ### 10. Performance: atribución e integración
 
-Estado: **pendiente**.
+Estado: **implementado y verificado el 9 de noviembre de 2026**. Los bloques 06–08 siguen pendientes. Contratos en [attribution-contracts.md](attribution-contracts.md).
 
 Commit manual sugerido: `feat(performance): implement attribution and verify backend journeys`.
 
-Depende de 01–05 y 09 para atribución y recorridos no financieros. La integración con pagos/suscripciones espera a 06–08, que siguen pendientes y no bloquean el trabajo propio de Performance. US-29 escenarios 4–5: enlaces/códigos de colaboración, interacciones atribuibles sin duplicados y resultados con límites/advertencia de estimación. Impedir destinos arbitrarios y no equiparar clics a ventas verificadas. Ejecutar recorridos completos con MySQL y ambos roles, actualizaciones de esquema sin borrar datos, seed idempotente y revisión final de contratos móviles y OpenAPI.
+Depende de 01–05 y 09. US-29 escenarios 4–5 y TS-07: creación/consulta de LINK y CODE; destinos elegidos por ID desde configuración del servidor, sin aceptar URLs del visitante; clics registrados mediante redirección 302 y declaraciones empresariales con evidencia y eventId estable. Distingue FIRST_PARTY_TRACKING de BRAND_DECLARATION, deduplica reintentos/concurrencia, conserva auditoría y excluye de los totales las declaraciones con evidencia rechazada. HEAD/prefetch no suman clics; desactivación, cancelación o retiro del destino impiden redirigir.
+
+Los resultados informan periodo con fin exclusivo, fuentes, advertencia obligatoria e isEstimate=true. No certifican personas únicas, conversiones ni ventas; los totales demostrativos se separan. Incluye V14 sin reescribir migraciones, seed idempotente, estados/versiones, rollback, privacidad y pruebas con MySQL de un recorrido completo para ambos roles. La revisión de DTO y rutas Kotlin queda registrada en [backend-validation-and-mobile-contracts.md](backend-validation-and-mobile-contracts.md); no se modificó Android. SS-03 documenta las asociaciones comprobadas localmente y sus límites. La integración financiera y sus recorridos esperan a 06–08; el consentimiento y las mediciones sociales externas y el despliegue Azure mantienen su validación pendiente.
 
 ## Reglas de cierre por bloque
 
-Mantener los diez bloques originales: seis implementados y cuatro restantes. Cada bloque pendiente es una entrega funcional con su mensaje de commit sugerido; no se añaden commits separados para capas, pruebas o documentación. Los commits los crea manualmente el usuario cuando revise la entrega.
+Mantener los diez bloques originales: siete implementados y tres restantes, todos de Billing (06–08). Cada bloque pendiente es una entrega funcional con su mensaje de commit sugerido; no se añaden commits separados para capas, pruebas o documentación. Los commits los crea manualmente el usuario cuando revise la entrega.
 
 Cada bloque incluye dominio, aplicación, infraestructura, REST, migración nueva, pruebas de sus escenarios y documentación. Mantener las cuatro capas, JWT y autorización por objeto, errores `ApiError`, fechas del servidor y control de reintentos/concurrencia. Las pruebas finales complementan las de cada bloque, no las sustituyen. Mantener separadas las pruebas controladas y las verificaciones externas reales.
 
-La vigencia de aceptación quedó confirmada en el bloque 03: primera fecha de entrega. En el bloque 04 se confirmó que la empresa fija un nuevo plazo futuro al rechazar. El bloque 05 confirma la ventana de siete días y la aceptación por la contraparte para resolver incidencias. Antes de los bloques siguientes deben concretarse viabilidad financiera, catálogo comercial, tratamiento de compensación mixta y métricas respaldadas. No fijar reglas comerciales arbitrarias en el código.
+La vigencia de aceptación quedó confirmada en el bloque 03: primera fecha de entrega. En el bloque 04 se confirmó que la empresa fija un nuevo plazo futuro al rechazar. El bloque 05 confirma la ventana de siete días y la aceptación por la contraparte para resolver incidencias. Antes de retomar Billing deben concretarse viabilidad financiera, catálogo comercial y tratamiento de compensación mixta. Los límites de las métricas/estimaciones están documentados; las verificaciones externas siguen pendientes. No fijar reglas comerciales arbitrarias en el código.

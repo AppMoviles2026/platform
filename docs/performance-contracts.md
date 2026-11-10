@@ -1,6 +1,6 @@
 # Performance: métricas y evidencias — bloque 09
 
-Implementación de US-29, escenarios 1–3, y consulta de métricas/registro de evidencia de TS-07. Atribución, enlaces/códigos, clics y estimaciones comerciales quedan en el bloque 10. Billing 06–08 sigue pendiente. Android deberá consumir estas rutas posteriormente.
+Implementación de US-29, escenarios 1–3, y consulta de métricas/registro de evidencia de TS-07. Atribución, enlaces/códigos e interpretación de interacciones están implementados en el bloque 10 y documentados en [attribution-contracts.md](attribution-contracts.md). No se inventan ventas ni tasas de conversión comerciales. Billing 06–08 sigue pendiente. Android deberá consumir estas rutas posteriormente.
 
 ## Modelo y límites DDD
 
@@ -132,4 +132,4 @@ El seed optativo se ejecuta después de los seeds anteriores y añade una eviden
 
 Las pruebas cubren invariantes, API con JWT y ambos roles, permisos por recurso, referencias y archivos privados, revisiones concurrentes, reintentos simultáneos con una sola consulta, fallos conservando capturas, versiones históricas, origen manual, seed y actualización V12→V13. Las pruebas del adaptador usan HTTP controlado y el ACL real de Identity para verificar renovación/permisos. No acreditan mediciones con cuentas externas reales. Ver [validación de capacidades y límites SS-03](ss03-metrics-feasibility.md).
 
-Verificación final: 300 casos aprobados con MySQL 8.4/Mailpit aislados (regresión completa más comprobación final de Performance/seed/DDD); regresión H2 completa con 299 aprobados y una prueba de correo omitida por requerir Mailpit. Sin fallos ni errores. Los contenedores de prueba se detuvieron conservando sus datos; no se alteró la base normal de la aplicación.
+Verificación registrada al cerrar el bloque 09: 300 casos aprobados con MySQL 8.4/Mailpit aislados (regresión completa más comprobación final de Performance/seed/DDD); regresión H2 completa con 299 aprobados y una prueba de correo omitida por requerir Mailpit. Sin fallos ni errores. Los contenedores de prueba se detuvieron conservando sus datos; no se alteró la base normal de la aplicación.

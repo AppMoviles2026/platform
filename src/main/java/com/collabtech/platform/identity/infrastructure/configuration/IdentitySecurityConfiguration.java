@@ -26,6 +26,8 @@ public class IdentitySecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/brands", "/api/v1/auth/creators",
                                 "/api/v1/auth/sessions", "/api/v1/auth/recovery-requests", "/api/v1/auth/password-resets").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/social-accounts/*/callback").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/public/attribution/*").permitAll()
+                        .requestMatchers(HttpMethod.HEAD, "/api/v1/public/attribution/*").permitAll()
                         .requestMatchers("/error", "/api/v1/public/presentations/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(errors -> errors

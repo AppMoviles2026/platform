@@ -29,6 +29,29 @@ class DemoPerformanceSeedTests {
     @Autowired CollaborationService collaborationService;@Autowired DeliveryService delivery;@Autowired PerformanceService service;
     @Autowired AgreementRepository agreements;@Autowired CollaborationRepository collaborations;@Autowired DeliverableRepository deliveries;
     @Autowired PerformancePersistence data;@Autowired UnitOfWork work;@Autowired PerformancePorts.UnitOfWork performanceWork;@Autowired JdbcTemplate jdbc;
+    @Autowired com.collabtech.platform.performance.application.services.AttributionService attribution;
+    @Autowired com.collabtech.platform.performance.infrastructure.persistence.AttributionPersistence attributionData;
+    @Autowired com.collabtech.platform.performance.application.ports.AttributionPorts.Destinations destinations;
+    @Test void attributionDemoHasSeparateTotalsAndRerunsPreserveDeactivation(){
+        var args=new DefaultApplicationArguments();
+        new DemoDataSeed(accounts,campaigns,catalog,applications,passwords,clock,manager,"SeedTestPassword123!").run(args);
+        new CollaborationDemoSeed(collaborationService,accounts,agreements,work).run(args);
+        new DeliveryDemoSeed(delivery,accounts,agreements,collaborations,deliveries,work,clock).run(args);
+        new PerformanceDemoSeed(service,accounts,agreements,collaborations,data,data,performanceWork,clock).run(args);
+        var seed=new AttributionDemoSeed(attribution,accounts,agreements,collaborations,data,data,performanceWork,destinations);
+        seed.run(args);
+        String c=jdbc.queryForObject("select c.collaboration_id from collaboration_collaboration c join collaboration_agreement a on c.agreement_id=a.agreement_id where a.application_id='30000000-0000-4000-8000-000000000004'",String.class);
+        var brand=accounts.findByEmail(new com.collabtech.platform.identity.domain.model.valueobjects.EmailAddress("demo.brand@collabpro.app")).orElseThrow();
+        var report=attribution.results(brand.id().value(),java.util.UUID.fromString(c),null,null,new com.collabtech.platform.shared.application.pagination.PageRequest(0,20));
+        assertEquals(2,report.mechanisms().total());assertEquals(0,report.totals().total());assertEquals(1,report.demonstrationTotals().codeRedemptions());
+        var code=report.mechanisms().items().stream().filter(m->m.mechanism().kind()==com.collabtech.platform.performance.domain.model.AttributionModels.Kind.CODE).findFirst().orElseThrow().mechanism();
+        attribution.status(brand.id().value(),code.id(),new com.collabtech.platform.performance.application.services.AttributionService.ChangeStatus(java.util.UUID.randomUUID(),0,
+                com.collabtech.platform.performance.domain.model.AttributionModels.Status.INACTIVE));
+        seed.run(args);
+        assertEquals(com.collabtech.platform.performance.domain.model.AttributionModels.Status.INACTIVE,attributionData.mechanism(code.id()).orElseThrow().status());
+        var after=attribution.results(brand.id().value(),java.util.UUID.fromString(c),null,null,new com.collabtech.platform.shared.application.pagination.PageRequest(0,20));
+        assertEquals(2,after.mechanisms().total());assertEquals(1,after.demonstrationTotals().codeRedemptions());assertEquals(0,after.totals().total());
+    }
     @Test void manualDemonstrationIsMarkedAndNeverCreatesAutomaticMetricsOrOverwritesReview(){
         var args=new DefaultApplicationArguments();
         new DemoDataSeed(accounts,campaigns,catalog,applications,passwords,clock,manager,"SeedTestPassword123!").run(args);
