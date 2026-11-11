@@ -1,4 +1,2 @@
-/**
- * Pure Java model. Depends only on shared.domain; no Spring, JPA, HTTP or application imports.
- */
+/** Payment-account ownership, linking lifecycle and payment-method invariants without framework dependencies. */
 package com.collabtech.platform.billing.domain;

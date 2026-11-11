@@ -98,6 +98,16 @@ class OpenApiDocumentationTests {
                 .andExpect(jsonPath("$.components.schemas.AttributionCreateBody.required",org.hamcrest.Matchers.hasItems("requestId","kind","label")))
                 .andExpect(jsonPath("$.components.schemas.AttributionInteractionBody.required",org.hamcrest.Matchers.hasItems("eventId","evidenceId","occurredAt")))
                 .andExpect(jsonPath("$.components.schemas.AttributionStatusBody.required",org.hamcrest.Matchers.hasItem("expectedVersion")));
+        mvc.perform(get("/v3/api-docs"))
+                .andExpect(jsonPath("$.paths['/api/v1/user/{id}/billing'].post.responses['202']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/user/{id}/billing'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/user/{id}/billing/validation'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/billing/authorizations/{id}'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/billing/paypal/callback'].get.security").isEmpty())
+                .andExpect(jsonPath("$.paths['/api/v1/billing/paypal/identity-callback'].get.security").isEmpty())
+                .andExpect(jsonPath("$.paths['/api/v1/webhooks/payments'].post.security").isEmpty())
+                .andExpect(jsonPath("$.components.schemas.BeginRequest.required",org.hamcrest.Matchers.hasItems("requestId","client")))
+                .andExpect(jsonPath("$.components.schemas.MethodView.properties.encryptedReference").doesNotExist());
         mvc.perform(get("/api/v1/accounts/me")).andExpect(status().isUnauthorized());
     }
 }

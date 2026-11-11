@@ -52,6 +52,7 @@ En Swagger, ejecuta `POST /api/v1/auth/sessions` con una cuenta demo, copia `acc
 | Historial | `GET /collaborations/history`, `/collaborations/history/{id}`, `/collaborations/{id}/history` |
 | Performance | `GET /collaborations/{id}/metrics`; actualización y capturas; `GET, POST /collaborations/{id}/evidence`; revisión bajo `/performance-evidence/{id}` y archivos privados de evidencia |
 | Atribución | `GET, POST /collaborations/{id}/attribution`; destinos, estados y declaraciones bajo `/attribution`; enlace público solo GET/HEAD bajo `/public/attribution/{token}` |
+| Vinculación financiera Sandbox | `GET, POST /user/{id}/billing`; consulta/cancelación de autorizaciones, validación de método, callbacks PayPal y `POST /webhooks/payments` |
 | Redes sociales | `POST /social-accounts/{platform}/authorizations`; `GET /social-accounts/{platform}/callback`, `/social-accounts/authorizations/{authorizationId}`, `/social-accounts/me`, `/social-accounts/{socialId}/access` |
 
 Evaluación empresarial: `GET /campaigns/{id}/applications`, detalle y `POST /campaigns/{id}/applications/{applicationId}/decision`. [Contratos y compatibilidad del bloque 02](docs/campaign-contracts.md). [Acuerdos bilaterales y estado: bloque 03](docs/collaboration-contracts.md). [Entregas, archivos y revisión: bloque 04](docs/delivery-contracts.md). [Incidencias e historial: bloque 05](docs/incident-history-contracts.md). [Métricas y evidencia: bloque 09](docs/performance-contracts.md). [Atribución: bloque 10](docs/attribution-contracts.md).
@@ -59,6 +60,8 @@ Evaluación empresarial: `GET /campaigns/{id}/applications`, detalle y `POST /ca
 Para creación y detalle de contratos, consulta los controladores REST en `src/main/java/com/collabtech/platform`. Las migraciones de esquema están en `src/main/resources/db/migration`.
 
 Métricas automáticas: TikTok requiere `video.list` y nuevo consentimiento si solo estaba autorizado el perfil básico. Instagram admite evidencia manual; su adaptador de estadísticas sigue pendiente. [Capacidades y validación externa pendiente](docs/ss03-metrics-feasibility.md).
+
+PayPal Sandbox: completa `PAYPAL_CLIENT_ID` y `PAYPAL_CLIENT_SECRET` en el `.env` de la raíz y define `PAYPAL_ENABLED=true`. Las empresas autorizan Vault y los creadores verifican su cuenta receptora con Log in with PayPal. Para recibir webhooks configura también `PAYPAL_WEBHOOK_ID` y un host HTTPS público. [Configuración, contratos y verificación pendiente](docs/billing-linking-contracts.md). Este bloque vincula cuentas; suscripciones y compensaciones siguen pendientes.
 
 ## Despliegue
 

@@ -1,6 +1,6 @@
 # Verificación del backend y contratos para Android
 
-Bloque 10: cierre de los recorridos no financieros de los bloques 01–05 y 09–10. Billing 06–08 sigue pendiente. Este documento registra revisión de contratos y pruebas del backend; no declara implementado su consumo nuevo desde Android ni desplegados los cambios en Azure.
+Bloque 10: cierre de los recorridos no financieros de los bloques 01–05 y 09–10. Actualización del bloque 06: la vinculación PayPal Sandbox y la base de webhooks están implementadas; Billing 07–08 sigue pendiente. Este documento registra revisión de contratos y pruebas del backend; no declara implementado su consumo nuevo desde Android ni desplegados los cambios en Azure.
 
 ## Recorridos comprobados
 
@@ -14,6 +14,7 @@ Bloque 10: cierre de los recorridos no financieros de los bloques 01–05 y 09�
 | Entrega → rechazo con nuevo plazo → corrección versionada → aprobación → finalización | DeliveryApiTests y AttributionApiTests.fullNonFinancialJourneyPreservesOriginalTermsAndReachesResultsForBothRoles. |
 | Incidencia posterior → propuesta → aceptación de contraparte → historial | IncidentApiTests, CollaborationHistoryApiTests y el mismo recorrido completo de atribución. |
 | Evidencia manual → código/enlace → declaración/clic → resultados para ambos roles | AttributionApiTests y PerformanceApiTests; métricas automáticas ausentes siguen siendo NO_DATA. |
+| Login de ambos roles → consentimiento financiero → método propio → validación/revocación | BillingApiTests con proveedor controlado; PayPalGatewayTests verifica el protocolo HTTP. Autenticación y preparación Vault externas también comprobadas; falta consentimiento externo completo. |
 | Reintentos/concurrencia → rollback → permisos por objeto → archivos privados | Pruebas específicas de Campaign, Collaboration, Performance y Attribution; claves duplicadas no generan otro hecho. |
 | Esquemas V5–V13 → esquema actual → arranque repetido/seed | BackendMigrationUpgradeTests con H2 dedicado; aplicación y seeds comprobados con MySQL aislado. |
 | Contrato REST y documentación pública | OpenApiDocumentationTests: bearer, rutas, 201/302, esquemas obligatorios y descargas binarias. |
@@ -21,7 +22,13 @@ Bloque 10: cierre de los recorridos no financieros de los bloques 01–05 y 09�
 
 El recorrido final conserva snapshot de condiciones y completedAt de la colaboración y consulta resultados e historial con ambos JWT. La compensación continúa NOT_AVAILABLE: no existe pago real, cobro simulado ni suscripción activa por completar ese recorrido.
 
-## Resultado registrado del bloque 10
+## Resultado registrado del bloque 06
+
+Verificación del bloque 06, 10 de noviembre de 2026: **376 casos únicos aprobados con el entorno MySQL 8.4/Mailpit**, sin fallos, errores ni omisiones. Se ejecutó una regresión completa de 372 casos y, tras revisar la recuperación de Vault y respuestas inválidas, se revalidaron las 33 pruebas del adaptador; cuatro son casos adicionales. La regresión H2 final ejecutó **376 casos: 375 aprobados y una omisión de RecoveryMailpitTests**, cubierta satisfactoriamente en MySQL/Mailpit. Incluye 24 pruebas API de Billing, 33 de protocolo/cifrado, nueve de migraciones, arquitectura, Swagger y toda la funcionalidad anterior. Compose y enlaces internos también están comprobados. El código nuevo no fue desplegado en Azure ni conectado todavía desde Android.
+
+La autenticación externa y la preparación de Vault se comprobaron con PayPal Sandbox, HTTP 200/201 respectivamente; consentimiento humano y webhooks entrantes públicos permanecen pendientes. [Contratos y configuración](billing-linking-contracts.md).
+
+## Resultado registrado del bloque 10 (referencia previa)
 
 - MySQL 8.4/Mailpit aislados: **318 casos aprobados**, sin fallos, errores ni omisiones; regresión completa y comprobación posterior de atribución para verificar también comparación exacta del token público con la collation de MySQL.
 - H2: **317 aprobados y uno omitido**, sin fallos ni errores. La única omisión es RecoveryMailpitTests, que requiere el servicio de correo y sí pasó en la ejecución MySQL.
@@ -44,7 +51,7 @@ Se revisaron IdentityApi.kt, IdentityDtos.kt, CampaignApi.kt, CampaignDtos.kt, C
 | Entregas/incidencias/historial | Consumir los contratos documentados, con IDs de versiones, expectedVersion y claves persistidas durante reintentos. Usar JWT también para descargar evidencia privada. |
 | Métricas y evidencia | Añadir consumo de Performance, tratar NO_DATA/AVAILABLE_STALE/HISTORICAL_ONLY, separar MANUAL de AUTOMATED y conservar fuente/periodo. |
 | Atribución | Cargar destinos por ID, crear LINK/CODE, usar trackingUrl absoluto y mostrar availability real. Conservar eventId del mismo hecho aunque cambie requestId. Mostrar fuentes, advertencia, intervalo y demostraciones separadas. |
-| Billing | Mantener pendiente; no convertir previews ni estados de ejemplo en pagos/suscripciones reales. |
+| Billing | Añadir repositorio/DTO/ViewModel para begin/listado/consulta/validación, conservar requestId, abrir approvalUrl y recibir collabpro://billing-return con posterior consulta JWT. Mostrar errorCode, vencimiento y estados reales. No declarar LINKED por el deep link sin consultar el servidor; 07/08 permanecen pendientes. |
 
 Gson en ApiJson tolera propiedades nuevas de respuesta y ya maneja Instant. Los contratos posteriores se documentaron sin quitar rutas heredadas. No se modificó código Kotlin en este bloque ni se acredita una prueba visual del emulador.
 

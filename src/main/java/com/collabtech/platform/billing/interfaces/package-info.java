@@ -1,4 +1,2 @@
-/**
- * Reserved for REST resources, DTO mapping and published context facades. No endpoints registered by this scaffold.
- */
+/** JWT-protected linking contracts, state-verified callbacks and signed payment webhooks. */
 package com.collabtech.platform.billing.interfaces;
