@@ -22,6 +22,17 @@ class OpenApiDocumentationTests {
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
     }
 
+    @Test void compensationRoutesPublishRequiredFieldsAndPublicReadOnlyReturn() throws Exception {
+        mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.paths['/api/v1/collaborations/{id}/compensation'].get").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/compensations/{id}'].get").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/collaborations/{id}/payment'].post.responses['201']").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/collaborations/{id}/payment/confirmation'].post").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/collaborations/{id}/payment/refresh'].post").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/collaborations/{id}/compensation/history'].get").exists())
+            .andExpect(jsonPath("$.paths['/api/v1/billing/paypal/compensation-callback'].get.security").isEmpty())
+            .andExpect(jsonPath("$.components.schemas.PaymentRequest.required",org.hamcrest.Matchers.hasItems("requestId","client","expectedVersion")));
+    }
     @Test void documentationIsPublicAndDescribesBearerSecurity() throws Exception {
         mvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
         mvc.perform(get("/v3/api-docs/swagger-config")).andExpect(status().isOk());

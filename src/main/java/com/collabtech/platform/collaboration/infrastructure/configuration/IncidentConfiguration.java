@@ -26,11 +26,13 @@ public class IncidentConfiguration {
         return new IncidentService(participants,work,collaborations,deliveries,incidents,incidents,incidents,events,data,data,files,policy,clock);
     }
     @Bean @ConditionalOnMissingBean(RelatedReferences.class)
-    RelatedReferences historyRelatedReferences(org.springframework.beans.factory.ObjectProvider<com.collabtech.platform.performance.interfaces.acl.PerformanceReportFacade> performance) {
+    RelatedReferences historyRelatedReferences(org.springframework.beans.factory.ObjectProvider<com.collabtech.platform.performance.interfaces.acl.PerformanceReportFacade> performance,
+        org.springframework.beans.factory.ObjectProvider<com.collabtech.platform.billing.interfaces.acl.CompensationReferenceFacade> billing) {
         return id->{
             var facade=performance.getIfAvailable();
             var reference=facade==null?java.util.Optional.<com.collabtech.platform.performance.interfaces.acl.PerformanceReportFacade.Reference>empty():facade.find(id);
-            return new References(new Reference(id,"NOT_AVAILABLE",null),new Reference(id,reference.isPresent()?"AVAILABLE":"NOT_AVAILABLE",reference.map(r->r.reportId().toString()).orElse(null)));
+            var compensation=billing.getIfAvailable();var cash=compensation==null?java.util.Optional.<java.util.UUID>empty():compensation.find(id);
+            return new References(new Reference(id,cash.isPresent()?"AVAILABLE":"NOT_AVAILABLE",cash.map(java.util.UUID::toString).orElse(null)),new Reference(id,reference.isPresent()?"AVAILABLE":"NOT_AVAILABLE",reference.map(r->r.reportId().toString()).orElse(null)));
         };
     }
     @Bean CollaborationHistoryService collaborationHistoryService(CollaborationService service,UnitOfWork work,

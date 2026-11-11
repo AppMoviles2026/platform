@@ -29,7 +29,7 @@ public class OpenApiConfiguration {
                 var operation = item.getPost();
                 if (operation != null) operation.setSecurity(List.of());
             }
-            if (path.matches("/api/v1/billing/paypal/(callback|identity-callback|subscription-callback)")
+            if (path.matches("/api/v1/billing/paypal/(callback|identity-callback|subscription-callback|compensation-callback)")
                     || path.equals("/api/v1/webhooks/payments")
                     || path.matches("/api/v1/social-accounts/[^/]+/callback")
                     || path.startsWith("/api/v1/public/presentations/")) {

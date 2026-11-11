@@ -23,7 +23,7 @@ public class BillingConfiguration {
                 }
             }
         }};}
-    @Bean BillingService billingService(PaymentAccountRepository repo,Queries queries,Access access,Gateway gateway,Secrets secrets,UnitOfWork work,Clock clock,com.collabtech.platform.billing.application.ports.SubscriptionPorts.EventRouter subscriptionEvents){
-        return new BillingService(repo,queries,access,gateway,secrets,work,clock,subscriptionEvents);
+    @Bean BillingService billingService(PaymentAccountRepository repo,Queries queries,Access access,Gateway gateway,Secrets secrets,UnitOfWork work,Clock clock,com.collabtech.platform.billing.application.ports.SubscriptionPorts.EventRouter subscriptionEvents,com.collabtech.platform.billing.application.services.CompensationEvents compensationEvents){
+        return new BillingService(repo,queries,access,gateway,secrets,work,clock,(id,payload)->{String status=subscriptionEvents.enqueue(id,payload);return "DEFERRED".equals(status)?compensationEvents.enqueue(id,payload):status;});
     }
 }

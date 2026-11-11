@@ -6,7 +6,7 @@ La numeración identifica bloques de trabajo; los commits de control de versione
 
 ## Estado actual — 11 de noviembre de 2026
 
-**Nueve bloques implementados (01–07, 09 y 10) y uno pendiente (08). Billing utiliza PayPal Sandbox por decisión del usuario; el consentimiento/cobro externo completo y los pagos de colaboraciones del bloque 08 siguen pendientes. La integración móvil posterior y las verificaciones externas se mantienen diferenciadas del código del backend.** «Implementado» describe el código y sus verificaciones, no confirma que el usuario haya creado el commit manual ni desplegado los cambios.
+**Diez bloques implementados (01–10). Billing utiliza PayPal Sandbox por decisión del usuario; la comprobación externa completa con consentimiento, ingreso, envío recibido y webhook público sigue pendiente. La integración móvil posterior y las verificaciones externas se mantienen diferenciadas del código del backend.** «Implementado» describe el código y sus verificaciones, no confirma que el usuario haya creado el commit manual ni desplegado los cambios.
 
 | Bloque | Estado | Contexto | US y soporte | Entrega |
 | --- | --- | --- | --- | --- |
@@ -17,7 +17,7 @@ La numeración identifica bloques de trabajo; los commits de control de versione
 | 05 | Implementado | Collaboration | US-25/30; TS-05 | Incidencias, resolución e historial por participante. |
 | 06 | Implementado | Billing | US-26; TS-06; SS-01 | Validación Sandbox del proveedor, vinculación financiera y base de webhooks. |
 | 07 | Implementado | Billing | US-27; TS-06 | Planes y suscripciones confirmadas por el proveedor. |
-| 08 | Pendiente | Billing | US-28; TS-05/06 | Compensaciones, bloqueos, transacciones y pagos sin duplicación. |
+| 08 | Implementado | Billing | US-28; TS-05/06 | Compensaciones, bloqueos, transacciones y pagos sin duplicación. |
 | 09 | Implementado | Performance | US-29, escenarios 1–3; TS-07; SS-03 | Métricas con fuente/periodo y evidencias manuales diferenciadas. |
 | 10 | Implementado | Performance e integración | US-29, escenarios 4–5; TS-07; SS-03 | Atribución, estimaciones y validación de recorridos completos. |
 
@@ -33,6 +33,7 @@ US-01 a US-08 corresponden a la landing y quedan fuera de estos bloques. El cons
 - **Bloque 05:** incidencias con bloqueos independientes, propuestas y confirmación de contraparte, ampliación/cancelación consensuadas, historial privado y recuperación de hechos anteriores, ACL de ejecución, migración V12 y seed de resolución. Detalles en [incident-history-contracts.md](incident-history-contracts.md).
 - **Bloque 06:** vinculación PayPal Sandbox para empresa (Vault) y creador (identidad receptora), estados, reintentos, callbacks Web/Android, requisito de método válido, referencias cifradas, inbox firmado e idempotente, revocación incluso fuera de orden y V15. No implementa suscripciones ni pagos. [Contratos y evidencia externa](billing-linking-contracts.md).
 - **Bloque 07:** catálogo de planes Sandbox, suscripción de empresa con medio propio, consentimiento específico, comprobación de cobro, historial, cancelación confirmada, reanudación de aprobación, cola durable de eventos, reconciliación/polling y V16. Esencial USD 5/Crecimiento USD 10 mensuales, confirmados para la demo. [Contratos y evidencia externa](subscription-contracts.md).
+- **Bloque 08:** compensación desde el acuerdo, cumplimiento/incidencias, ingreso Orders V2 y envío Payouts separados, reintentos/versiones, auditoría y reconciliación durables, migración V17 y demo USD independiente. Contratos en [compensation-contracts.md](compensation-contracts.md); revisión final en [backend-consistency-audit.md](backend-consistency-audit.md).
 - **Bloque 09:** reporte de resultados por colaboración, capturas autorizadas de TikTok con fuente/periodo, ausencia y fallos explícitos, evidencia manual y revisión empresarial separadas, archivos privados, reintentos/concurrencia, referencias desde el historial, migración V13 y seed manual demostrativo. Contratos en [performance-contracts.md](performance-contracts.md); límites externos en [ss03-metrics-feasibility.md](ss03-metrics-feasibility.md).
 - **Bloque 10:** mecanismos LINK/CODE, destinos aprobados en servidor, seguimiento público deduplicado y declaraciones privadas con evidencia, fuentes/periodos/advertencia de estimación, estados y versiones, exclusión de evidencia rechazada, V14, demo diferenciada, recorridos completos no financieros y revisión de contratos Android/OpenAPI. Detalles en [attribution-contracts.md](attribution-contracts.md) y [backend-validation-and-mobile-contracts.md](backend-validation-and-mobile-contracts.md).
 
@@ -42,16 +43,18 @@ Verificación del bloque 06, 10 de noviembre de 2026: **376 casos únicos aproba
 
 Verificación del bloque 07, 11 de noviembre de 2026: **424 casos únicos aprobados con MySQL 8.4/Mailpit**, sin fallos, errores ni omisiones: regresión completa de 420 casos, revalidación final de API/adaptador/OpenAPI (47 casos, tres adicionales respecto de la regresión) y aislamiento del scheduler (un caso adicional). La regresión H2 final ejecutó **424 casos: 423 aprobados y una omisión de correo**, cubierta en MySQL/Mailpit. Incluye 26 pruebas API de suscripción, 20 del adaptador, una de aislamiento de tareas programadas, diez de migraciones y toda la regresión anterior. También se verificaron Compose, enlaces internos e inicialización/reutilización de planes reales Sandbox. La aprobación del comprador, el cobro ficticio completo y el webhook público no se acreditan como verificados.
 
+Verificación del bloque 08, 11 de noviembre de 2026: **472 casos únicos aprobados con MySQL 8.4/Mailpit**, regresión completa de 467 y revalidación final de 47 (cinco adicionales). H2: **471 aprobados y una prueba de correo omitida**, cubierta con Mailpit. Incluye 29 casos API de compensación, 15 de protocolo financiero, migración V17, seed USD, arquitectura, Swagger y aislamiento de schedulers. Los 29 casos API se revalidaron con MySQL tras la última validación previa al preflight, sin fallos. Consentimiento y recorrido externo completo Sandbox permanecen pendientes. [Auditoría de inconsistencias y valores fijos](backend-consistency-audit.md).
+
 ### Límites y verificaciones que siguen pendientes
 
 - Las redes sociales y las métricas se probaron con respuestas HTTP controladas. SS-03 mantiene pendiente la validación externa; TikTok requiere video.list e Instagram aún no tiene adaptador de estadísticas. Configurar y verificar consentimiento/renovación con cuentas externas reales sigue pendiente; SS-02 no debe presentarse como validación real concluida.
 - Android todavía debe consumir las rutas nuevas. Las condiciones y mutaciones heredadas que aceptan versión opcional conservan compatibilidad; los clientes deben enviar versión para detectar una pantalla desactualizada. Las rutas nuevas que la requieren están documentadas.
-- Seleccionar una postulación sigue sin crear una colaboración ni una aceptación bilateral. El bloque 03 exige las dos firmas y cubre US-21/22. El bloque 04 cubre entregas/revisiones y sus versiones; el bloque 05 completa incidencias/historial global con resolución bilateral. Billing implementa la vinculación en 06; las suscripciones están implementadas en 07 y las compensaciones de 08 siguen pendientes. Performance implementa métricas/evidencia en 09 y atribución/interpretación en 10. La confirmación externa completa de suscripción sigue pendiente; las compensaciones se implementarán en 08.
+- Seleccionar una postulación sigue sin crear una colaboración ni una aceptación bilateral. El bloque 03 exige las dos firmas y cubre US-21/22. El bloque 04 cubre entregas/revisiones y sus versiones; el bloque 05 completa incidencias/historial global con resolución bilateral. Billing implementa la vinculación en 06; las suscripciones están implementadas en 07 y el bloque 08 implementa compensaciones Sandbox. Performance implementa métricas/evidencia en 09 y atribución/interpretación en 10. La verificación externa completa de suscripción y compensación sigue pendiente.
 - Los resultados locales no acreditan que estos cambios estén desplegados en Azure. Ese despliegue y su verificación son independientes del estado de implementación.
 
 ## Bloque 01: alcance de implementación
 
-Estado del código: implementado y verificado el 8 de noviembre de 2026. Los bloques 02–07, 09 y 10 también están implementados; 08 continúa pendiente. La verificación contra cuentas reales de redes sociales requiere configurar las aplicaciones externas; se detalla separadamente en los contratos de Identity.
+Estado del código: implementado y verificado el 8 de noviembre de 2026. Los bloques 02–10 también están implementados. La verificación contra cuentas reales de redes sociales requiere configurar las aplicaciones externas; se detalla separadamente en los contratos de Identity.
 
 Mensaje sugerido para el commit manual: `feat(identity): complete brand profiles and authorized social access`.
 
@@ -106,7 +109,7 @@ US-30 implementa historial propio paginado, detalle de acuerdo y recursos, crono
 
 ### 06. Billing: vinculación financiera
 
-Estado: **implementado el 10 de noviembre de 2026**. Proveedor elegido por el usuario: PayPal Sandbox, sin operaciones reales. El bloque 07 está implementado y el 08 sigue pendiente. Stripe fue descartado para esta demo por el registro y la caducidad del entorno anónimo. Contratos y guía: [billing-linking-contracts.md](billing-linking-contracts.md).
+Estado: **implementado el 10 de noviembre de 2026**. Proveedor elegido por el usuario: PayPal Sandbox, sin operaciones reales. Los bloques 07 y 08 están implementados. Stripe fue descartado para esta demo por el registro y la caducidad del entorno anónimo. Contratos y guía: [billing-linking-contracts.md](billing-linking-contracts.md).
 
 US-26 incluye vinculación validada por propósito, fallos explícitos y requisito financiero reutilizable con `METHOD_REQUIRED`. TS-06 incorpora la ruta de preparación y el webhook firmado; las suscripciones se implementan en 07 y los pagos de colaboraciones corresponden a 08. El seed no inventa autorizaciones del proveedor. El spike SS-01 queda **parcial**: autenticación externa Sandbox HTTP 200 y preparación de Vault HTTP 201 verificadas; consentimiento humano de ambos roles y webhook entregado al servidor siguen pendientes. El reporte conserva el título original sobre Stripe y todavía requiere reflejar la sustitución aprobada.
 
@@ -116,7 +119,7 @@ Depende de 01 y usa 03–05 para el flujo de compensación de SS-01. Validar el 
 
 ### 07. Billing: suscripción
 
-Estado: **implementado el 11 de noviembre de 2026**. Contratos y configuración en [subscription-contracts.md](subscription-contracts.md). El bloque 08 sigue pendiente.
+Estado: **implementado el 11 de noviembre de 2026**. Contratos y configuración en [subscription-contracts.md](subscription-contracts.md). El bloque 08 implementa compensaciones Sandbox.
 
 US-27 incluye planes obtenidos desde el servidor, requisito de medio PAYMENT propio, consentimiento Subscriptions, comprobación de transacción/periodo e identidad, fallos sin beneficios, estados pendientes e historial. TS-06 escenarios 2–3 conserva POST 201 y GET 200; un intento creado no se declara pagado. El webhook firma/deduplica, encola trabajo durable y solo lo marca procesado tras reconciliarlo.
 
@@ -130,7 +133,7 @@ Depende de 06. US-27 obtiene planes/precios/monedas desde el servidor. Medio vá
 
 ### 08. Billing: compensación
 
-Estado: **pendiente por decisión del usuario; depende de 06 y 07**.
+Estado: **implementado el 11 de noviembre de 2026**. Contratos y recorrido en [compensation-contracts.md](compensation-contracts.md). Autenticación/scopes Sandbox comprobados; consentimiento, captura, recepción del envío y webhook público externos permanecen pendientes.
 
 Commit manual sugerido: `feat(billing): implement compensation lifecycle and payments`.
 
@@ -148,18 +151,18 @@ La referencia del historial identifica el reporte mediante un ACL. Las pruebas i
 
 ### 10. Performance: atribución e integración
 
-Estado: **implementado y verificado el 9 de noviembre de 2026**. Los bloques 06–07 añaden vinculación y suscripción Sandbox; 08 sigue pendiente. Contratos en [attribution-contracts.md](attribution-contracts.md).
+Estado: **implementado y verificado el 9 de noviembre de 2026**. Los bloques 06–08 implementan vinculación, suscripción y compensación Sandbox. Contratos en [attribution-contracts.md](attribution-contracts.md).
 
 Commit manual sugerido: `feat(performance): implement attribution and verify backend journeys`.
 
 Depende de 01–05 y 09. US-29 escenarios 4–5 y TS-07: creación/consulta de LINK y CODE; destinos elegidos por ID desde configuración del servidor, sin aceptar URLs del visitante; clics registrados mediante redirección 302 y declaraciones empresariales con evidencia y eventId estable. Distingue FIRST_PARTY_TRACKING de BRAND_DECLARATION, deduplica reintentos/concurrencia, conserva auditoría y excluye de los totales las declaraciones con evidencia rechazada. HEAD/prefetch no suman clics; desactivación, cancelación o retiro del destino impiden redirigir.
 
-Los resultados informan periodo con fin exclusivo, fuentes, advertencia obligatoria e isEstimate=true. No certifican personas únicas, conversiones ni ventas; los totales demostrativos se separan. Incluye V14 sin reescribir migraciones, seed idempotente, estados/versiones, rollback, privacidad y pruebas con MySQL de un recorrido completo para ambos roles. La revisión de DTO y rutas Kotlin queda registrada en [backend-validation-and-mobile-contracts.md](backend-validation-and-mobile-contracts.md); no se modificó Android. SS-03 documenta las asociaciones comprobadas localmente y sus límites. La integración financiera y sus recorridos esperan al bloque 08; la suscripción del 07 mantiene pendiente el recorrido externo completo; el consentimiento y las mediciones sociales externas y el despliegue Azure mantienen su validación pendiente.
+Los resultados informan periodo con fin exclusivo, fuentes, advertencia obligatoria e isEstimate=true. No certifican personas únicas, conversiones ni ventas; los totales demostrativos se separan. Incluye V14 sin reescribir migraciones, seed idempotente, estados/versiones, rollback, privacidad y pruebas con MySQL de un recorrido completo para ambos roles. La revisión de DTO y rutas Kotlin queda registrada en [backend-validation-and-mobile-contracts.md](backend-validation-and-mobile-contracts.md); no se modificó Android. SS-03 documenta las asociaciones comprobadas localmente y sus límites. El bloque 08 agrega recorridos financieros controlados; la suscripción del 07 mantiene pendiente el recorrido externo completo; el consentimiento y las mediciones sociales externas y el despliegue Azure mantienen su validación pendiente.
 
 ## Reglas de cierre por bloque
 
-Mantener los diez bloques originales: nueve implementados y uno restante de Billing (08). Cada bloque pendiente es una entrega funcional con su mensaje de commit sugerido; no se añaden commits separados para capas, pruebas o documentación. Los commits los crea manualmente el usuario cuando revise la entrega.
+Mantener los diez bloques originales, todos implementados. Cada bloque es una entrega funcional con su mensaje de commit sugerido; no se añaden commits separados para capas, pruebas o documentación. Los commits los crea manualmente el usuario cuando revise la entrega.
 
 Cada bloque incluye dominio, aplicación, infraestructura, REST, migración nueva, pruebas de sus escenarios y documentación. Mantener las cuatro capas, JWT y autorización por objeto, errores `ApiError`, fechas del servidor y control de reintentos/concurrencia. Las pruebas finales complementan las de cada bloque, no las sustituyen. Mantener separadas las pruebas controladas y las verificaciones externas reales.
 
-La vigencia de aceptación quedó confirmada en el bloque 03: primera fecha de entrega. En el bloque 04 se confirmó que la empresa fija un nuevo plazo futuro al rechazar. El bloque 05 confirma la ventana de siete días y la aceptación por la contraparte para resolver incidencias. Para 08 deben concretarse la viabilidad de Payouts en PayPal Sandbox y el tratamiento de compensación mixta. El catálogo de demo del 07 ya fue confirmado; la validación comercial y los consentimientos/cobros externos siguen pendientes. Los límites de las métricas/estimaciones están documentados; las verificaciones externas siguen pendientes. No fijar reglas comerciales arbitrarias en el código.
+La vigencia de aceptación quedó confirmada en el bloque 03: primera fecha de entrega. En el bloque 04 se confirmó que la empresa fija un nuevo plazo futuro al rechazar. El bloque 05 confirma la ventana de siete días y la aceptación por la contraparte para resolver incidencias. Para 08 el usuario confirmó Sandbox, conservación de PEN y un ejemplo nuevo en USD. Se implementó ingreso previo y envío separado; el dominio actual no contiene MIXED y no se inventó ese tipo. El catálogo de demo del 07 ya fue confirmado; la validación comercial y los consentimientos/cobros externos siguen pendientes. Los límites de las métricas/estimaciones están documentados; las verificaciones externas siguen pendientes. No fijar reglas comerciales arbitrarias en el código.

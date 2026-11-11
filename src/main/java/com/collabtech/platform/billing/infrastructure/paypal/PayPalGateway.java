@@ -21,6 +21,7 @@ import tools.jackson.databind.*;
 public class PayPalGateway implements Gateway {
     public static final String API="https://api-m.sandbox.paypal.com";
     private final PayPalProperties settings;private final RestClient http;private final ObjectMapper json;private final Clock clock;
+    private java.util.Set<String> appScopes=java.util.Set.of();
     private String appToken;private Instant appTokenExpiry=Instant.EPOCH;
     @org.springframework.beans.factory.annotation.Autowired
     public PayPalGateway(PayPalProperties settings,ObjectMapper json,Clock clock){
@@ -59,8 +60,9 @@ public class PayPalGateway implements Gateway {
     }
     private synchronized String appToken(){if(appToken!=null&&clock.instant().isBefore(appTokenExpiry.minusSeconds(30)))return appToken;
         var form=new LinkedMultiValueMap<String,String>();form.add("grant_type","client_credentials");var result=oauth(form);
-        appToken=required(result,"access_token");long ttl=result.path("expires_in").asLong(0);
+        appToken=required(result,"access_token");appScopes=java.util.Set.copyOf(java.util.Arrays.asList(result.path("scope").asText("").split("\\s+")));long ttl=result.path("expires_in").asLong(0);
         if(ttl<60||ttl>86400)throw new BillingFailure(Code.INVALID_PROVIDER_RESPONSE);appTokenExpiry=clock.instant().plusSeconds(ttl);return appToken;}
+    synchronized boolean hasScope(String scope){appToken();return appScopes.contains(scope);}
     JsonNode request(HttpMethod method,String path,Object body,String requestId){
         configured();
         for(int attempt=0;attempt<2;attempt++){
@@ -73,6 +75,32 @@ public class PayPalGateway implements Gateway {
                 throw remote(e.getStatusCode().value());
             }catch(ResourceAccessException e){throw new BillingFailure(Code.PROVIDER_UNAVAILABLE,true);}
         }throw new BillingFailure(Code.PROVIDER_NOT_CONFIGURED);
+    }
+    JsonNode payoutRequest(Object body,String requestId){return payoutRequest(body,requestId,true);}
+    private JsonNode payoutRequest(Object body,String requestId,boolean refresh){
+        configured();
+        try{return parse(http.post().uri("/v1/payments/payouts").headers(h->{h.setBearerAuth(appToken());h.set("PayPal-Request-Id",requestId);})
+            .contentType(MediaType.APPLICATION_JSON).body(json.writeValueAsString(body)).retrieve().body(String.class));
+        }catch(RestClientResponseException error){
+            if(error.getStatusCode().value()==401&&refresh){synchronized(this){appToken=null;}return payoutRequest(body,requestId,false);}
+            if(error.getStatusCode().value()==400||error.getStatusCode().value()==422){
+                var result=parse(error.getResponseBodyAsString());
+                boolean duplicate="DUPLICATE_BATCH_ID".equals(result.path("name").asText());
+                for(var detail:result.path("details"))if("DUPLICATE_BATCH_ID".equals(detail.path("issue").asText()))duplicate=true;
+                if(duplicate){
+                    var links=new java.util.ArrayList<tools.jackson.databind.JsonNode>();for(var link:result.path("links"))links.add(link);
+                    for(var detail:result.path("details"))for(var link:detail.path("links"))links.add(link);
+                    for(var link:links){
+                        java.net.URI uri;try{uri=java.net.URI.create(link.path("href").asText());}catch(Exception ignored){continue;}
+                        if("https".equals(uri.getScheme())&&java.util.Set.of("api-m.sandbox.paypal.com","api.sandbox.paypal.com").contains(uri.getHost())
+                            &&uri.getUserInfo()==null&&uri.getPort()==-1&&uri.getFragment()==null&&uri.getPath().matches("/v1/payments/payouts/[A-Za-z0-9]+"))
+                            return request(HttpMethod.GET,uri.getPath()+"?page_size=1000",null,null);
+                    }
+                    throw new BillingFailure(Code.INVALID_PROVIDER_RESPONSE);
+                }
+            }
+            throw remote(error.getStatusCode().value());
+        }catch(ResourceAccessException error){throw new BillingFailure(Code.PROVIDER_UNAVAILABLE,true);}
     }
     public Preparation prepare(UUID authorization,UUID account,String state){
         String back=settings.fundingReturnUrl()+"?state="+encode(state);

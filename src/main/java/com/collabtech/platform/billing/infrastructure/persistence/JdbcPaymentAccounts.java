@@ -77,6 +77,7 @@ public class JdbcPaymentAccounts implements PaymentAccountRepository,Queries {
         jdbc.update("INSERT INTO billing_audit(audit_id,payment_account_id,authorization_id,method_id,event_type,occurred_at) VALUES(?,?,?,?,?,?)",
             UUID.randomUUID().toString(),account==null?null:account.toString(),auth==null?null:auth.toString(),method==null?null:method.toString(),type,ts(now));
     }
+    public Optional<Method> active(UUID account,Purpose purpose){return one(METHODS+"WHERE m.payment_account_id=? AND m.purpose=? AND m.status='ACTIVE' AND r.revoked=FALSE ORDER BY m.linked_at DESC,m.method_id DESC LIMIT 1",METHOD,account.toString(),purpose.name());}
     public PageResult<Method> methods(UUID account,PageRequest page){
         long total=jdbc.queryForObject("SELECT COUNT(*) FROM billing_method WHERE payment_account_id=?",Long.class,account.toString());
         return new PageResult<>(jdbc.query(METHODS+"WHERE m.payment_account_id=? ORDER BY m.linked_at DESC,m.method_id LIMIT ? OFFSET ?",METHOD,account.toString(),page.size(),(long)page.page()*page.size()),total,page.page(),page.size());

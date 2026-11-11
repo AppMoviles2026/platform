@@ -1,6 +1,6 @@
 # Verificación del backend y contratos para Android
 
-Bloque 10: cierre de los recorridos no financieros de los bloques 01–05 y 09–10. Actualización del bloque 06: la vinculación PayPal Sandbox y la base de webhooks están implementadas; el bloque 07 añade suscripciones y Billing 08 sigue pendiente. Este documento registra revisión de contratos y pruebas del backend; no declara implementado su consumo nuevo desde Android ni desplegados los cambios en Azure.
+Bloque 10: cierre de los recorridos no financieros de los bloques 01–05 y 09–10. Actualización del bloque 06: la vinculación PayPal Sandbox y la base de webhooks están implementadas; los bloques 07 y 08 añaden suscripciones y compensaciones Sandbox. Este documento registra revisión de contratos y pruebas del backend; no declara implementado su consumo nuevo desde Android ni desplegados los cambios en Azure.
 
 ## Recorridos comprobados
 
@@ -16,11 +16,19 @@ Bloque 10: cierre de los recorridos no financieros de los bloques 01–05 y 09�
 | Evidencia manual → código/enlace → declaración/clic → resultados para ambos roles | AttributionApiTests y PerformanceApiTests; métricas automáticas ausentes siguen siendo NO_DATA. |
 | Login de ambos roles → consentimiento financiero → método propio → validación/revocación | BillingApiTests con proveedor controlado; PayPalGatewayTests verifica el protocolo HTTP. Autenticación y preparación Vault externas también comprobadas; falta consentimiento externo completo. |
 | Reintentos/concurrencia → rollback → permisos por objeto → archivos privados | Pruebas específicas de Campaign, Collaboration, Performance y Attribution; claves duplicadas no generan otro hecho. |
-| Esquemas V5–V13 → esquema actual → arranque repetido/seed | BackendMigrationUpgradeTests con H2 dedicado; aplicación y seeds comprobados con MySQL aislado. |
+| Esquemas V5–V16 → esquema actual → arranque repetido/seed | BackendMigrationUpgradeTests con H2 dedicado; aplicación y seeds comprobados con MySQL aislado. |
+| Acuerdo cumplido → aprobación Sandbox → ingreso → envío → compensación/historial | CompensationApiTests: 29 casos con proveedor controlado; separa fundedAt/paidAt, preserva PEN, canjes, incidentes y hechos históricos. |
 | Contrato REST y documentación pública | OpenApiDocumentationTests: bearer, rutas, 201/302, esquemas obligatorios y descargas binarias. |
 | Separación de bounded contexts | ArchitectureBoundariesTests: cuatro capas, dependencias hacia dentro y contratos publicados. |
 
-El recorrido final conserva snapshot de condiciones y completedAt de la colaboración y consulta resultados e historial con ambos JWT. La compensación continúa NOT_AVAILABLE: no existe pago real, cobro simulado ni suscripción activa por completar ese recorrido.
+El recorrido final conserva snapshot de condiciones y completedAt de la colaboración y consulta resultados e historial con ambos JWT. Ese recorrido no financiero no marca pagos ni activa suscripciones. Desde el bloque 08 el historial consulta el ID financiero publicado cuando existe la proyección; su disponibilidad no significa que esté pagado.
+
+## Resultado del bloque 08
+Regresión MySQL 8.4/Mailpit: **472 casos únicos aprobados**, sin fallos, errores ni omisiones: regresión completa de 467 y revalidación final de API/proveedor/arquitectura/scheduler (47 casos, cinco adicionales). Incluye 29 pruebas API de compensación, 15 de protocolo financiero, un caso de aislamiento del scheduler, un caso del seed USD, once de migraciones, Swagger y los bloques anteriores. La regresión H2 final ejecutó **472 casos: 471 aprobados y una omisión de correo**, cubierta con MySQL/Mailpit. Los 29 casos API se revalidaron con MySQL después del último ajuste de validación previa al preflight, sin fallos.
+
+La integración comprueba con HTTP real del backend: registro/JWT de ambos participantes, campaña/postulación/selección/acuerdo, cumplimiento/incidencias, métodos, aprobación/captura/envío y consulta de historial. PayPal está controlado en estos recorridos. Separadamente se comprobó OAuth externo Sandbox con permisos Orders/Payouts, sin mostrar secretos; no se acredita consentimiento humano, cobro, envío recibido ni webhook público externo.
+
+Contratos y demo: [compensation-contracts.md](compensation-contracts.md). Correcciones y límites restantes: [backend-consistency-audit.md](backend-consistency-audit.md). El código nuevo no se desplegó en Azure ni se conectó desde Android.
 
 ## Resultado registrado del bloque 07
 
@@ -57,7 +65,7 @@ Se revisaron IdentityApi.kt, IdentityDtos.kt, CampaignApi.kt, CampaignDtos.kt, C
 | Entregas/incidencias/historial | Consumir los contratos documentados, con IDs de versiones, expectedVersion y claves persistidas durante reintentos. Usar JWT también para descargar evidencia privada. |
 | Métricas y evidencia | Añadir consumo de Performance, tratar NO_DATA/AVAILABLE_STALE/HISTORICAL_ONLY, separar MANUAL de AUTOMATED y conservar fuente/periodo. |
 | Atribución | Cargar destinos por ID, crear LINK/CODE, usar trackingUrl absoluto y mostrar availability real. Conservar eventId del mismo hecho aunque cambie requestId. Mostrar fuentes, advertencia, intervalo y demostraciones separadas. |
-| Billing | Consumir vinculación y catálogo/suscripción/historial con requestId persistido; abrir approvalUrl en navegador y recibir collabpro://billing-return o collabpro://subscription-return. Consultar luego con JWT y mostrar estado, error, paidThrough y benefitsActive del servidor. POST 201 no acredita cobro; 08 sigue pendiente. |
+| Billing | Consumir vinculación y catálogo/suscripción/historial con requestId persistido; abrir approvalUrl en navegador y recibir collabpro://billing-return o collabpro://subscription-return. Consultar luego con JWT y mostrar estado, error, paidThrough y benefitsActive del servidor. POST 201 no acredita cobro. Para compensación consumir /collaborations/{id}/compensation y payment/confirmation, gestionar collabpro://compensation-return y distinguir fundedAt de paidAt. PEN no se convierte; un canje no se muestra como pago monetario. |
 
 Gson en ApiJson tolera propiedades nuevas de respuesta y ya maneja Instant. Los contratos posteriores se documentaron sin quitar rutas heredadas. No se modificó código Kotlin en este bloque ni se acredita una prueba visual del emulador.
 

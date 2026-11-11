@@ -1,6 +1,6 @@
 # Billing · bloque 06 · PayPal Sandbox
 
-Alcance: US-26 y preparación de TS-06. Se vincula una autorización financiera; no se crean órdenes, suscripciones, cargos, transferencias ni reembolsos. El bloque 07 implementa suscripciones en [subscription-contracts.md](subscription-contracts.md); el 08 sigue pendiente. El cambio de Stripe a PayPal fue indicado por el usuario; el título original de SS-01 en el reporte todavía menciona Stripe y requiere actualizarse cuando se documente ese sprint.
+Alcance: US-26 y preparación de TS-06. Se vincula una autorización financiera; no se crean órdenes, suscripciones, cargos, transferencias ni reembolsos. El bloque 07 implementa suscripciones en [subscription-contracts.md](subscription-contracts.md); el 08 implementa compensaciones en [compensation-contracts.md](compensation-contracts.md). El cambio de Stripe a PayPal fue indicado por el usuario; el título original de SS-01 en el reporte todavía menciona Stripe y requiere actualizarse cuando se documente ese sprint.
 
 ## Configuración y ejecución
 
@@ -79,7 +79,7 @@ Se verifican las cabeceras y la firma con el endpoint oficial de PayPal y el Web
 
 `PaymentReadinessFacade` publica un requisito financiero sin exponer referencias PayPal. Las operaciones económicas deben exigir este requisito **dentro de su propio flujo transaccional** y verificar nuevamente las condiciones de pago, incidencias y respuesta del proveedor. El bloque 07 exige este requisito para iniciar suscripciones; la compensación completa corresponde al bloque 08.
 
-Un payment-token de Vault no activa una suscripción de PayPal. El bloque 07 necesita el consentimiento específico de Subscriptions; el bloque 08 debe validar Payouts, país, divisa, saldo y permisos por separado. El bloque 06 no cambia las compensaciones existentes en PEN ni inventa una conversión a USD. El seed tampoco fabrica cuentas PayPal vinculadas.
+Un payment-token de Vault no activa una suscripción de PayPal. El bloque 07 necesita el consentimiento específico de Subscriptions; el bloque 08 valida Payouts, divisa, receptor y permisos por separado; distingue ingreso y envío y conserva errores por saldo insuficiente. El bloque 06 no cambia las compensaciones existentes en PEN ni inventa una conversión a USD. El seed tampoco fabrica cuentas PayPal vinculadas.
 
 ## Evidencia y fuentes
 

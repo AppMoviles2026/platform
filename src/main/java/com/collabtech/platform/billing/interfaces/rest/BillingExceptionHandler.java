@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-@RestControllerAdvice(assignableTypes={SubscriptionController.class,SubscriptionCallbackController.class,BillingController.class,PayPalCallbackController.class,PaymentsWebhookController.class})
+@RestControllerAdvice(assignableTypes={CompensationController.class,CompensationCallbackController.class,SubscriptionController.class,SubscriptionCallbackController.class,BillingController.class,PayPalCallbackController.class,PaymentsWebhookController.class})
 public class BillingExceptionHandler {
     @ExceptionHandler(BillingFailure.class)
     public ResponseEntity<ApiError> failure(BillingFailure error){
@@ -21,6 +21,11 @@ public class BillingExceptionHandler {
             default->HttpStatus.CONFLICT;
         };
         String message=switch(error.code()){
+            case COMPENSATION_NOT_ELIGIBLE->"El pago requiere todos los entregables aprobados y ninguna incidencia abierta.";
+            case UNSUPPORTED_PAYMENT_CURRENCY->"La moneda acordada no está soportada para este pago Sandbox. El acuerdo no se modifica.";
+            case NON_MONETARY_COMPENSATION->"La compensación acordada no requiere un pago monetario.";
+            case PAYMENT_ALREADY_IN_PROGRESS->"Ya existe una operación de pago. Consulta o confirma esa misma operación.";
+            case FROZEN_TERMS_CHANGED,RECONCILIATION_REQUIRED->"La operación requiere reconciliación antes de continuar; no se crea otro cobro.";
             case PLAN_UNAVAILABLE->"El plan no está disponible o su configuración no coincide con PayPal Sandbox.";
             case SUBSCRIPTION_EXISTS->"Ya existe una suscripción o un intento pendiente. Consulta su estado antes de continuar.";
             case PROVIDER_ACCOUNT_MISMATCH->"Aprueba la suscripción con la misma cuenta PayPal vinculada.";
@@ -33,7 +38,7 @@ public class BillingExceptionHandler {
             case ACCOUNT_NOT_VERIFIED->"PayPal debe confirmar la cuenta y el correo electrónico.";
             case AUTHORIZATION_EXPIRED->"La autorización venció. Inicia una nueva vinculación.";
             case PROVIDER_UNAVAILABLE->"PayPal no está disponible. Consulta el estado antes de reintentar.";
-            default->"No se pudo completar la solicitud de vinculación.";
+            default->"No se pudo completar la operación financiera.";
         };
         return ResponseEntity.status(status).cacheControl(CacheControl.noStore()).body(new ApiError(error.code().name(),message,Map.of()));
     }

@@ -16,6 +16,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class IdentityProfileFacadeAdapter implements IdentityProfileFacade {
     private final AccountRepository accounts;
     public IdentityProfileFacadeAdapter(AccountRepository accounts) { this.accounts = accounts; }
+    @Transactional(readOnly=true)
+    public Optional<ProfileAccount> accountByProfile(UUID id,String role){
+        var found=switch(role){
+            case "BRAND"->accounts.findByBrandProfileId(new com.collabtech.platform.identity.domain.model.valueobjects.BrandProfileId(id));
+            case "CREATOR"->accounts.findByCreatorProfileId(new com.collabtech.platform.identity.domain.model.valueobjects.CreatorProfileId(id));
+            default->Optional.<com.collabtech.platform.identity.domain.model.aggregates.Account>empty();
+        };
+        return found.map(a->new ProfileAccount(a.id().value(),id,a.accountType().name(),a.status()==AccountStatus.ACTIVE));
+    }
     @Transactional(readOnly = true)
     public Optional<BrandDetails> brandById(UUID id) {
         return accounts.findByBrandProfileId(new com.collabtech.platform.identity.domain.model.valueobjects.BrandProfileId(id))

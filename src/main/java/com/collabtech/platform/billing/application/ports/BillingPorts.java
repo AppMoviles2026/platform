@@ -33,5 +33,5 @@ public final class BillingPorts {
         Verified identity(String accessToken);
         boolean verify(Signature signature,Map<String,Object> payload);
     }
-    public interface Queries {PageResult<Method> methods(UUID paymentAccount,PageRequest page);}
+    public interface Queries {PageResult<Method> methods(UUID paymentAccount,PageRequest page);Optional<Method> active(UUID paymentAccount,Purpose purpose);}
 }

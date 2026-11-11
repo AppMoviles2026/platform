@@ -6,6 +6,8 @@ import java.util.UUID;
 /** Published Identity contract. Consumers do not receive aggregates, repositories or credentials. */
 public interface IdentityProfileFacade {
     Optional<Profile> byAccount(UUID accountId);
+    default Optional<ProfileAccount> accountByProfile(UUID profileId,String role){return Optional.empty();}
+    record ProfileAccount(UUID accountId,UUID profileId,String role,boolean active){}
     /** Trusted internal consumers must first authorize access to their campaign/collaboration. */
     Optional<BrandDetails> brandById(UUID brandProfileId);
     Optional<CreatorDetails> creatorById(UUID creatorProfileId);

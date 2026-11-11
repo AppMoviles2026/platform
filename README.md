@@ -21,7 +21,7 @@ MySQL guarda sus datos en un volumen. No uses `docker compose down -v` salvo que
 
 ## Cuentas de demostración
 
-Compose carga automáticamente datos de ejemplo: 1 marca, 2 creadores, 4 campañas publicadas, 1 borrador y 5 postulaciones (3 pendientes y 2 evaluadas). También crea un acuerdo aceptado entre la marca y `demo.creator2@collabpro.app`, con una entrega corregida pendiente de revisión, su rechazo histórico y una incidencia demo resuelta por ambas partes y una evidencia manual de estadísticas marcada como demostración (sin métricas automáticas ficticias). El seed añade también código/enlace demostrativos de atribución y un uso de código separado de los totales reales. El seed es idempotente: no duplica ni sobrescribe datos existentes.
+Compose carga automáticamente datos de ejemplo: 1 marca, 2 creadores, 4 campañas publicadas, 1 borrador y 5 postulaciones (3 pendientes y 2 evaluadas). También crea un acuerdo aceptado entre la marca y `demo.creator2@collabpro.app`, con una entrega corregida pendiente de revisión, su rechazo histórico y una incidencia demo resuelta por ambas partes y una evidencia manual de estadísticas marcada como demostración (sin métricas automáticas ficticias). El seed añade también código/enlace demostrativos de atribución y un uso de código separado de los totales reales. También añade una colaboración independiente «Demo PayPal Sandbox USD» de USD 5 con una pieza aprobada, sin medios financieros ni pagos inventados. El seed es idempotente: no duplica ni sobrescribe datos existentes.
 
 | Rol | Correo |
 |---|---|
@@ -52,6 +52,7 @@ En Swagger, ejecuta `POST /api/v1/auth/sessions` con una cuenta demo, copia `acc
 | Historial | `GET /collaborations/history`, `/collaborations/history/{id}`, `/collaborations/{id}/history` |
 | Performance | `GET /collaborations/{id}/metrics`; actualización y capturas; `GET, POST /collaborations/{id}/evidence`; revisión bajo `/performance-evidence/{id}` y archivos privados de evidencia |
 | Atribución | `GET, POST /collaborations/{id}/attribution`; destinos, estados y declaraciones bajo `/attribution`; enlace público solo GET/HEAD bajo `/public/attribution/{token}` |
+| Compensación Sandbox | `GET /collaborations/{id}/compensation`; inicio, confirmación y actualización bajo `/collaborations/{id}/payment`; historial financiero por colaboración |
 | Suscripciones Sandbox | `GET /subscription-plans`; `GET, POST /user/{id}/subscription`; historial, consulta, actualización y cancelación bajo `/subscriptions` |
 | Vinculación financiera Sandbox | `GET, POST /user/{id}/billing`; consulta/cancelación de autorizaciones, validación de método, callbacks PayPal y `POST /webhooks/payments` |
 | Redes sociales | `POST /social-accounts/{platform}/authorizations`; `GET /social-accounts/{platform}/callback`, `/social-accounts/authorizations/{authorizationId}`, `/social-accounts/me`, `/social-accounts/{socialId}/access` |
@@ -62,9 +63,11 @@ Para creación y detalle de contratos, consulta los controladores REST en `src/m
 
 Métricas automáticas: TikTok requiere `video.list` y nuevo consentimiento si solo estaba autorizado el perfil básico. Instagram admite evidencia manual; su adaptador de estadísticas sigue pendiente. [Capacidades y validación externa pendiente](docs/ss03-metrics-feasibility.md).
 
-PayPal Sandbox: completa `PAYPAL_CLIENT_ID` y `PAYPAL_CLIENT_SECRET` en el `.env` de la raíz y define `PAYPAL_ENABLED=true`. Las empresas autorizan Vault y los creadores verifican su cuenta receptora con Log in with PayPal. Para recibir webhooks configura también `PAYPAL_WEBHOOK_ID` y un host HTTPS público. [Configuración, contratos y verificación pendiente](docs/billing-linking-contracts.md). La vinculación financiera corresponde al bloque 06. El bloque 07 añade suscripciones de empresa; las compensaciones del 08 siguen pendientes.
+PayPal Sandbox: completa `PAYPAL_CLIENT_ID` y `PAYPAL_CLIENT_SECRET` en el `.env` de la raíz y define `PAYPAL_ENABLED=true`. Las empresas autorizan Vault y los creadores verifican su cuenta receptora con Log in with PayPal. Para recibir webhooks configura también `PAYPAL_WEBHOOK_ID` y un host HTTPS público. [Configuración, contratos y verificación pendiente](docs/billing-linking-contracts.md). La vinculación financiera corresponde al bloque 06. El bloque 07 añade suscripciones de empresa; el bloque 08 completa compensaciones Sandbox.
 
 Suscripciones de demo: Esencial USD 5 y Crecimiento USD 10 mensuales. `scripts/initialize-paypal-subscriptions.ps1` crea/reutiliza los planes Sandbox y guarda sus IDs en `.env`. [Contratos, confirmación del cobro y webhooks](docs/subscription-contracts.md). Un intento creado o aprobado por el navegador no activa beneficios hasta confirmar el pago.
+
+Compensaciones: [contratos y demo Sandbox](docs/compensation-contracts.md). Conserva PEN y bloquea su pago sin convertirlo; el ejemplo USD permite probar aprobación, ingreso y envío al creador. Los canjes no generan cargos.
 
 ## Despliegue
 

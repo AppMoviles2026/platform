@@ -1,6 +1,6 @@
 # Billing · bloque 07 · suscripciones de empresa
 
-Alcance: US-27 y escenarios 2–3 de TS-06, con eventos de suscripción del escenario 5. PayPal **Sandbox exclusivamente**. El bloque 08 (compensaciones/pagos de colaboraciones) continúa pendiente. No se modificó Android ni se desplegó esta versión en Azure.
+Alcance: US-27 y escenarios 2–3 de TS-06, con eventos de suscripción del escenario 5. PayPal **Sandbox exclusivamente**. El bloque 08 implementa compensaciones/pagos de colaboraciones; ver [compensation-contracts.md](compensation-contracts.md). No se modificó Android ni se desplegó esta versión en Azure.
 
 ## Catálogo confirmado para la demo
 
