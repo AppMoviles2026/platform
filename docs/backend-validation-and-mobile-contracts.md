@@ -1,6 +1,6 @@
 # Verificación del backend y contratos para Android
 
-Bloque 10: cierre de los recorridos no financieros de los bloques 01–05 y 09–10. Actualización del bloque 06: la vinculación PayPal Sandbox y la base de webhooks están implementadas; Billing 07–08 sigue pendiente. Este documento registra revisión de contratos y pruebas del backend; no declara implementado su consumo nuevo desde Android ni desplegados los cambios en Azure.
+Bloque 10: cierre de los recorridos no financieros de los bloques 01–05 y 09–10. Actualización del bloque 06: la vinculación PayPal Sandbox y la base de webhooks están implementadas; el bloque 07 añade suscripciones y Billing 08 sigue pendiente. Este documento registra revisión de contratos y pruebas del backend; no declara implementado su consumo nuevo desde Android ni desplegados los cambios en Azure.
 
 ## Recorridos comprobados
 
@@ -22,7 +22,13 @@ Bloque 10: cierre de los recorridos no financieros de los bloques 01–05 y 09�
 
 El recorrido final conserva snapshot de condiciones y completedAt de la colaboración y consulta resultados e historial con ambos JWT. La compensación continúa NOT_AVAILABLE: no existe pago real, cobro simulado ni suscripción activa por completar ese recorrido.
 
-## Resultado registrado del bloque 06
+## Resultado registrado del bloque 07
+
+Verificación del bloque 07, 11 de noviembre de 2026: **424 casos únicos aprobados con MySQL 8.4/Mailpit**, sin fallos, errores ni omisiones: regresión completa de 420 casos, revalidación final de API/adaptador/OpenAPI (47 casos, tres adicionales respecto de la regresión) y aislamiento del scheduler (un caso adicional). La regresión H2 final ejecutó **424 casos: 423 aprobados y una omisión de correo**, cubierta en MySQL/Mailpit. Incluye 26 pruebas API de suscripción, 20 del adaptador, una de aislamiento de tareas programadas, diez de migraciones y toda la regresión anterior. También se verificaron Compose, enlaces internos e inicialización/reutilización de planes reales Sandbox. La aprobación del comprador, el cobro ficticio completo y el webhook público no se acreditan como verificados.
+
+Contratos, configuración y recorrido manual en [subscription-contracts.md](subscription-contracts.md).
+
+## Resultado registrado del bloque 06 (referencia previa)
 
 Verificación del bloque 06, 10 de noviembre de 2026: **376 casos únicos aprobados con el entorno MySQL 8.4/Mailpit**, sin fallos, errores ni omisiones. Se ejecutó una regresión completa de 372 casos y, tras revisar la recuperación de Vault y respuestas inválidas, se revalidaron las 33 pruebas del adaptador; cuatro son casos adicionales. La regresión H2 final ejecutó **376 casos: 375 aprobados y una omisión de RecoveryMailpitTests**, cubierta satisfactoriamente en MySQL/Mailpit. Incluye 24 pruebas API de Billing, 33 de protocolo/cifrado, nueve de migraciones, arquitectura, Swagger y toda la funcionalidad anterior. Compose y enlaces internos también están comprobados. El código nuevo no fue desplegado en Azure ni conectado todavía desde Android.
 
@@ -51,7 +57,7 @@ Se revisaron IdentityApi.kt, IdentityDtos.kt, CampaignApi.kt, CampaignDtos.kt, C
 | Entregas/incidencias/historial | Consumir los contratos documentados, con IDs de versiones, expectedVersion y claves persistidas durante reintentos. Usar JWT también para descargar evidencia privada. |
 | Métricas y evidencia | Añadir consumo de Performance, tratar NO_DATA/AVAILABLE_STALE/HISTORICAL_ONLY, separar MANUAL de AUTOMATED y conservar fuente/periodo. |
 | Atribución | Cargar destinos por ID, crear LINK/CODE, usar trackingUrl absoluto y mostrar availability real. Conservar eventId del mismo hecho aunque cambie requestId. Mostrar fuentes, advertencia, intervalo y demostraciones separadas. |
-| Billing | Añadir repositorio/DTO/ViewModel para begin/listado/consulta/validación, conservar requestId, abrir approvalUrl y recibir collabpro://billing-return con posterior consulta JWT. Mostrar errorCode, vencimiento y estados reales. No declarar LINKED por el deep link sin consultar el servidor; 07/08 permanecen pendientes. |
+| Billing | Consumir vinculación y catálogo/suscripción/historial con requestId persistido; abrir approvalUrl en navegador y recibir collabpro://billing-return o collabpro://subscription-return. Consultar luego con JWT y mostrar estado, error, paidThrough y benefitsActive del servidor. POST 201 no acredita cobro; 08 sigue pendiente. |
 
 Gson en ApiJson tolera propiedades nuevas de respuesta y ya maneja Instant. Los contratos posteriores se documentaron sin quitar rutas heredadas. No se modificó código Kotlin en este bloque ni se acredita una prueba visual del emulador.
 

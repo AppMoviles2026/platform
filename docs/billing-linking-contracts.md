@@ -1,6 +1,6 @@
 # Billing · bloque 06 · PayPal Sandbox
 
-Alcance: US-26 y preparación de TS-06. Se vincula una autorización financiera; no se crean órdenes, suscripciones, cargos, transferencias ni reembolsos. Los bloques 07 y 08 siguen pendientes. El cambio de Stripe a PayPal fue indicado por el usuario; el título original de SS-01 en el reporte todavía menciona Stripe y requiere actualizarse cuando se documente ese sprint.
+Alcance: US-26 y preparación de TS-06. Se vincula una autorización financiera; no se crean órdenes, suscripciones, cargos, transferencias ni reembolsos. El bloque 07 implementa suscripciones en [subscription-contracts.md](subscription-contracts.md); el 08 sigue pendiente. El cambio de Stripe a PayPal fue indicado por el usuario; el título original de SS-01 en el reporte todavía menciona Stripe y requiere actualizarse cuando se documente ese sprint.
 
 ## Configuración y ejecución
 
@@ -74,10 +74,10 @@ Se verifican las cabeceras y la firma con el endpoint oficial de PayPal y el Web
 - Mismo ID con contenido distinto: 409; firma inválida: 401. JSON mal formado, claves duplicadas o cuerpo excesivo: 400.
 - Revocación/eliminación de Vault: `PROCESSED`, método revocado y bloqueo de disponibilidad. Se guarda una marca incluso si el callback de alta aún no llegó; una creación tardía no borra esa revocación.
 - Creación de Vault: `UNMATCHED`; no vincula por sí sola un método sin verificar consentimiento y propietario.
-- Eventos financieros de suscripciones/pagos: `DEFERRED`, cifrados y conservados para los futuros manejadores de 07/08. No se declaran procesados ni generan beneficios.
+- Eventos financieros ajenos a la gestión de suscripciones: `DEFERRED`, cifrados y conservados para los futuros manejadores del bloque 08. Los eventos de suscripción se encolan y reconcilian según el bloque 07. No se declaran procesados ni generan beneficios.
 - Otros eventos: `IGNORED`, retenidos para trazabilidad.
 
-`PaymentReadinessFacade` publica un requisito financiero sin exponer referencias PayPal. Las operaciones económicas de 07/08 deberán exigir este requisito **dentro de su propio flujo transaccional** y verificar nuevamente las condiciones de pago, incidencias y respuesta del proveedor. Todavía no existen esas operaciones: la validación de US-26 escenario 3 cubre la precondición reutilizable, no prueba una suscripción o compensación completa.
+`PaymentReadinessFacade` publica un requisito financiero sin exponer referencias PayPal. Las operaciones económicas deben exigir este requisito **dentro de su propio flujo transaccional** y verificar nuevamente las condiciones de pago, incidencias y respuesta del proveedor. El bloque 07 exige este requisito para iniciar suscripciones; la compensación completa corresponde al bloque 08.
 
 Un payment-token de Vault no activa una suscripción de PayPal. El bloque 07 necesita el consentimiento específico de Subscriptions; el bloque 08 debe validar Payouts, país, divisa, saldo y permisos por separado. El bloque 06 no cambia las compensaciones existentes en PEN ni inventa una conversión a USD. El seed tampoco fabrica cuentas PayPal vinculadas.
 

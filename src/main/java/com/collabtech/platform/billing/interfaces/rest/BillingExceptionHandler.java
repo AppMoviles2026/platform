@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-@RestControllerAdvice(assignableTypes={BillingController.class,PayPalCallbackController.class,PaymentsWebhookController.class})
+@RestControllerAdvice(assignableTypes={SubscriptionController.class,SubscriptionCallbackController.class,BillingController.class,PayPalCallbackController.class,PaymentsWebhookController.class})
 public class BillingExceptionHandler {
     @ExceptionHandler(BillingFailure.class)
     public ResponseEntity<ApiError> failure(BillingFailure error){
@@ -21,6 +21,10 @@ public class BillingExceptionHandler {
             default->HttpStatus.CONFLICT;
         };
         String message=switch(error.code()){
+            case PLAN_UNAVAILABLE->"El plan no está disponible o su configuración no coincide con PayPal Sandbox.";
+            case SUBSCRIPTION_EXISTS->"Ya existe una suscripción o un intento pendiente. Consulta su estado antes de continuar.";
+            case PROVIDER_ACCOUNT_MISMATCH->"Aprueba la suscripción con la misma cuenta PayPal vinculada.";
+            case PAYMENT_UNCONFIRMED->"El proveedor todavía no confirma un cobro válido.";
             case METHOD_REQUIRED->"Primero vincula un método financiero válido para tu rol.";
             case SIGNATURE_INVALID->"No se pudo verificar la firma del proveedor.";
             case PROVIDER_NOT_CONFIGURED,WEBHOOK_NOT_CONFIGURED->"La integración Sandbox requiere configuración del servidor.";

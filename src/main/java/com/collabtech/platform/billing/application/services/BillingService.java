@@ -20,8 +20,14 @@ public final class BillingService {
     private record Start(Authorization authorization,boolean launch){}
     private record Completion(Authorization authorization,Account account,boolean launch){}
     private final PaymentAccountRepository repo;private final Queries queries;private final Access access;private final Gateway gateway;
+    private final com.collabtech.platform.billing.application.ports.SubscriptionPorts.EventRouter subscriptionEvents;
     private final Secrets secrets;private final UnitOfWork work;private final Clock clock;
     public BillingService(PaymentAccountRepository repo,Queries queries,Access access,Gateway gateway,Secrets secrets,UnitOfWork work,Clock clock){
+        this(repo,queries,access,gateway,secrets,work,clock,(id,payload)->"DEFERRED");
+    }
+    public BillingService(PaymentAccountRepository repo,Queries queries,Access access,Gateway gateway,Secrets secrets,UnitOfWork work,Clock clock,
+                          com.collabtech.platform.billing.application.ports.SubscriptionPorts.EventRouter subscriptionEvents){
+        this.subscriptionEvents=subscriptionEvents;
         this.repo=repo;this.queries=queries;this.access=access;this.gateway=gateway;this.secrets=secrets;this.work=work;this.clock=clock;
     }
     private Instant now(){return BillingModels.micros(clock.instant());}
@@ -180,8 +186,8 @@ public final class BillingService {
                     repo.audit(current.paymentAccountId(),null,current.id(),"METHOD_REVOKED",now());}
                 status="PROCESSED";
             }else if(type.equals("VAULT.PAYMENT-TOKEN.CREATED"))status="UNMATCHED";
-            else if(type.startsWith("BILLING.")||type.startsWith("PAYMENT.")||type.startsWith("CHECKOUT."))status="DEFERRED";
-            repo.event(new Event(id,type,resourceHash,hash,secrets.encrypt(raw),status,now(),"DEFERRED".equals(status)?null:now(),1));
+            else if(type.startsWith("BILLING.")||type.startsWith("PAYMENT.")||type.startsWith("CHECKOUT."))status=subscriptionEvents.enqueue(id,payload);
+            repo.event(new Event(id,type,resourceHash,hash,secrets.encrypt(raw),status,now(),Set.of("DEFERRED","QUEUED").contains(status)?null:now(),1));
             return new WebhookView(id,status,false);
         });
     }

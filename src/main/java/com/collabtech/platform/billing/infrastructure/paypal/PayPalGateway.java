@@ -61,12 +61,13 @@ public class PayPalGateway implements Gateway {
         var form=new LinkedMultiValueMap<String,String>();form.add("grant_type","client_credentials");var result=oauth(form);
         appToken=required(result,"access_token");long ttl=result.path("expires_in").asLong(0);
         if(ttl<60||ttl>86400)throw new BillingFailure(Code.INVALID_PROVIDER_RESPONSE);appTokenExpiry=clock.instant().plusSeconds(ttl);return appToken;}
-    private JsonNode request(HttpMethod method,String path,Object body,String requestId){
+    JsonNode request(HttpMethod method,String path,Object body,String requestId){
         configured();
         for(int attempt=0;attempt<2;attempt++){
             String bearer=appToken();
             try{var spec=http.method(method).uri(path).headers(h->{h.setBearerAuth(bearer);if(requestId!=null)h.set("PayPal-Request-Id",requestId);});
-                return parse((body==null?spec:spec.contentType(MediaType.APPLICATION_JSON).body(json.writeValueAsString(body))).retrieve().body(String.class));
+                String response=(body==null?spec:spec.contentType(MediaType.APPLICATION_JSON).body(json.writeValueAsString(body))).retrieve().body(String.class);
+                return response==null||response.isBlank()?json.createObjectNode():parse(response);
             }catch(RestClientResponseException e){
                 if(e.getStatusCode().value()==401&&attempt==0){synchronized(this){appToken=null;}continue;}
                 throw remote(e.getStatusCode().value());

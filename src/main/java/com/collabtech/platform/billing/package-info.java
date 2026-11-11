@@ -1,2 +1,2 @@
-/** Billing: verified Sandbox financial accounts and durable signed-event inbox. Subscription and compensation remain pending. */
+/** Billing: verified Sandbox financial accounts, company subscriptions and durable signed-event processing. Compensation remains pending. */
 package com.collabtech.platform.billing;

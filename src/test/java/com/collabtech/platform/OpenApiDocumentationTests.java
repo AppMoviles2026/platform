@@ -108,6 +108,14 @@ class OpenApiDocumentationTests {
                 .andExpect(jsonPath("$.paths['/api/v1/webhooks/payments'].post.security").isEmpty())
                 .andExpect(jsonPath("$.components.schemas.BeginRequest.required",org.hamcrest.Matchers.hasItems("requestId","client")))
                 .andExpect(jsonPath("$.components.schemas.MethodView.properties.encryptedReference").doesNotExist());
+        mvc.perform(get("/v3/api-docs"))
+                .andExpect(jsonPath("$.paths['/api/v1/subscription-plans'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/user/{id}/subscription'].post.responses['201']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/user/{id}/subscription'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/user/{id}/subscriptions'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/subscriptions/{id}/cancellation'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/billing/paypal/subscription-callback'].get.security").isEmpty())
+                .andExpect(jsonPath("$.components.schemas.SubscriptionRequest.required",org.hamcrest.Matchers.hasItems("requestId","planId","methodId","client")));
         mvc.perform(get("/api/v1/accounts/me")).andExpect(status().isUnauthorized());
     }
 }

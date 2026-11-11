@@ -23,7 +23,7 @@ public class BillingConfiguration {
                 }
             }
         }};}
-    @Bean BillingService billingService(PaymentAccountRepository repo,Queries queries,Access access,Gateway gateway,Secrets secrets,UnitOfWork work,Clock clock){
-        return new BillingService(repo,queries,access,gateway,secrets,work,clock);
+    @Bean BillingService billingService(PaymentAccountRepository repo,Queries queries,Access access,Gateway gateway,Secrets secrets,UnitOfWork work,Clock clock,com.collabtech.platform.billing.application.ports.SubscriptionPorts.EventRouter subscriptionEvents){
+        return new BillingService(repo,queries,access,gateway,secrets,work,clock,subscriptionEvents);
     }
 }
